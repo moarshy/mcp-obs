@@ -1,0 +1,35 @@
+{
+  "name": "@mcplatform/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf .next dist",
+    "db:generate": "bunx drizzle-kit generate",
+    "db:migrate": "bunx drizzle-kit migrate"
+  },
+  "dependencies": {
+    "next": "^15.0.0-rc.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "drizzle-orm": "^0.33.0",
+    "postgres": "^3.4.0",
+    "@mcplatform/database": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.0",
+    "@types/node": "^20.8.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "drizzle-kit": "^0.24.0",
+    "@types/pg": "^8.11.0",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^15.0.0-rc.0",
+    "tailwindcss": "^4.0.0-alpha.25",
+    "@tailwindcss/postcss": "^4.0.0-alpha.25"
+  }
+}
