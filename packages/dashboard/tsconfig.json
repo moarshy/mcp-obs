@@ -9,8 +9,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "database": ["../database"],
-      "server-sdk": ["../server-sdk/src"],
-      "client-sdk": ["../client-sdk/src"]
+      "server-sdk": ["../server-sdk"],
+      "client-sdk": ["../client-sdk"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
