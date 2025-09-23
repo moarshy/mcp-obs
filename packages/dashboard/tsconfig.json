@@ -8,9 +8,9 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@mcplatform/database": ["../database/src"],
-      "@mcplatform/server-sdk": ["../server-sdk/src"],
-      "@mcplatform/client-sdk": ["../client-sdk/src"]
+      "database": ["../database"],
+      "server-sdk": ["../server-sdk/src"],
+      "client-sdk": ["../client-sdk/src"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
