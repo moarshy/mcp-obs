@@ -70,7 +70,7 @@ bun run db:generate   # Generate migrations
 bun run db:migrate    # Run migrations
 ```
 
-### Project Status
+### Current Implementation Status
 ```
 ✅ SCAFFOLDING COMPLETE
 - Monorepo structure with Bun workspace
@@ -95,32 +95,55 @@ mcp-obs/
 │   ├── dashboard/           # Main Next.js application
 │   │   ├── src/
 │   │   │   ├── app/         # Next.js App Router
-│   │   │   │   ├── layout.tsx                  # Root layout
-│   │   │   │   ├── page.tsx                    # Homepage
-│   │   │   │   └── globals.css                 # Tailwind CSS
-│   │   │   ├── components/                     # (Future: shadcn/ui components)
-│   │   │   └── lib/                            # (Future: auth, oRPC, utilities)
+│   │   │   │   ├── layout.tsx                  # ✅ Root layout
+│   │   │   │   ├── page.tsx                    # ✅ Homepage
+│   │   │   │   ├── globals.css                 # ✅ Tailwind CSS
+│   │   │   │   └── api/                        # API routes
+│   │   │   │       ├── auth/[...auth]/route.ts # 🚧 Better Auth endpoint
+│   │   │   │       └── rpc/[[...rest]]/route.ts # 🚧 oRPC API endpoint
+│   │   │   ├── components/                     # shadcn/ui components
+│   │   │   │   ├── ui/                         # 🚧 Base UI components
+│   │   │   │   ├── dashboard/                  # 🚧 Dashboard-specific components
+│   │   │   │   └── auth/                       # 🚧 Authentication components
+│   │   │   └── lib/                            # Utilities and configurations
+│   │   │       ├── auth.ts                     # 🚧 Better Auth configuration
+│   │   │       ├── orpc.ts                     # 🚧 oRPC client setup
+│   │   │       ├── orpc.server.ts              # 🚧 Server-side oRPC client
+│   │   │       └── utils.ts                    # 🚧 Utility functions
 │   │   ├── drizzle/                            # Database migrations
 │   │   ├── drizzle.config.ts                   # Drizzle configuration
 │   │   └── postcss.config.mjs                  # PostCSS for Tailwind v4
 │   ├── database/            # Shared database schemas
 │   │   ├── src/
-│   │   │   ├── schema.ts                       # Basic database schema
-│   │   │   ├── connection.ts                   # Database connection utilities
-│   │   │   └── index.ts                        # Package exports
-│   │   ├── dist/                               # Compiled TypeScript
-│   │   └── tsconfig.json                       # TypeScript config
-│   ├── server-sdk/          # MCPlatform Server SDK (placeholder)
-│   │   ├── src/index.ts                        # SDK interface
-│   │   └── dist/                               # Compiled TypeScript
-│   └── client-sdk/          # MCPlatform Client SDK (placeholder)
-│       ├── src/index.ts                        # Client interface
-│       └── dist/                               # Compiled TypeScript
+│   │   │   ├── schema.ts                       # ✅ Basic schema (expand for features)
+│   │   │   ├── auth-schema.ts                  # 🚧 Platform auth schema
+│   │   │   ├── mcp-auth-schema.ts              # 🚧 MCP user schema
+│   │   │   ├── connection.ts                   # ✅ Database connection utilities
+│   │   │   └── index.ts                        # ✅ Package exports
+│   │   ├── dist/                               # ✅ Compiled TypeScript
+│   │   └── tsconfig.json                       # ✅ TypeScript config
+│   ├── server-sdk/          # MCPlatform Server SDK
+│   │   ├── src/
+│   │   │   ├── index.ts                        # ✅ Main SDK interface
+│   │   │   ├── auth-middleware.ts              # 🚧 Auth integration for MCP servers
+│   │   │   ├── telemetry.ts                    # 🚧 OpenTelemetry instrumentation
+│   │   │   └── types.ts                        # 🚧 TypeScript definitions
+│   │   └── dist/                               # ✅ Compiled TypeScript
+│   └── client-sdk/          # MCPlatform Client SDK
+│       ├── src/
+│       │   ├── index.ts                        # ✅ Main client interface
+│       │   ├── oauth-client.ts                 # 🚧 OAuth handling for MCP clients
+│       │   ├── session-manager.ts              # 🚧 Session management
+│       │   └── types.ts                        # 🚧 TypeScript definitions
+│       └── dist/                               # ✅ Compiled TypeScript
 ├── docs/
 │   └── 0.prd.md             # Product Requirements Document
 ├── specifications/
 │   └── project-setup/       # Feature specifications
-└── sst.config.ts            # SST infrastructure config
+├── sst.config.ts            # ✅ SST infrastructure config (template)
+└── README.md                # ✅ Project setup and development guide
+
+Legend: ✅ Implemented | 🚧 To be implemented following this guide
 ```
 
 ## Configuration Files
@@ -144,6 +167,42 @@ GITHUB_CLIENT_SECRET=your-github-secret
 # Infrastructure
 AWS_REGION=us-east-1
 ```
+
+## Feature Implementation Guide
+
+### Where to Implement Key Features
+
+#### Authentication System (Better Auth)
+- **Config**: `packages/dashboard/src/lib/auth.ts` - Better Auth setup with dual auth system
+- **Routes**: `packages/dashboard/src/app/api/auth/[...auth]/route.ts` - Auth endpoints
+- **Schemas**: `packages/database/src/auth-schema.ts` + `packages/database/src/mcp-auth-schema.ts`
+- **Components**: `packages/dashboard/src/components/auth/` - Login, signup, profile components
+
+#### oRPC Type-Safe APIs
+- **Server Setup**: `packages/dashboard/src/lib/orpc.server.ts` - Server-side oRPC client
+- **Client Setup**: `packages/dashboard/src/lib/orpc.ts` - Client-side oRPC setup
+- **API Routes**: `packages/dashboard/src/app/api/rpc/[[...rest]]/route.ts` - oRPC endpoint
+- **Procedures**: Create separate files in `src/lib/procedures/` for different domains
+
+#### UI Components (shadcn/ui)
+- **Base Components**: `packages/dashboard/src/components/ui/` - Button, Input, Dialog, etc.
+- **Dashboard Components**: `packages/dashboard/src/components/dashboard/` - Charts, tables, layouts
+- **Theme Config**: Use TweakCN with CSS variables in `globals.css`
+
+#### Database Schemas & Operations
+- **Platform Auth**: `packages/database/src/auth-schema.ts` - Customer users, organizations
+- **MCP User Auth**: `packages/database/src/mcp-auth-schema.ts` - End-user authentication
+- **Business Logic**: Expand `packages/database/src/schema.ts` - Servers, sessions, analytics
+
+#### SDK Implementation
+- **Server SDK**: `packages/server-sdk/src/` - Auth middleware, telemetry for MCP servers
+- **Client SDK**: `packages/client-sdk/src/` - OAuth handling, session management for MCP clients
+- **Types**: Shared TypeScript definitions in both SDKs
+
+#### OpenTelemetry Integration
+- **Instrumentation**: `packages/server-sdk/src/telemetry.ts` - OTEL setup for MCP servers
+- **Collector**: Next.js API routes to receive and forward telemetry data
+- **Export**: Configuration for customer observability platforms (Datadog, Grafana)
 
 ## Important Patterns
 
