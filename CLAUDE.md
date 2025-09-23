@@ -13,7 +13,7 @@
 - **MCPlatform SDK**:
   - **Server-Side SDK**: Integration library for customers' MCP servers (auth middleware, telemetry)
   - **Client-Side SDK**: Integration for MCP clients (OAuth handling, session management)
-- **Dual Auth System**: Platform auth (customers) + sub-tenant auth (end-users)
+- **Dual Auth System**: Platform Auth (customers with organization management) + MCP Server Auth (end-users)
 
 ### Key Technical Flow
 1. Customer (e.g., DocuAPI) registers MCP server → gets subdomain (docuapi.mcplatform.com)
@@ -37,7 +37,7 @@
 - **Language**: TypeScript (strict mode)
 
 ### Authentication & Database
-- **Authentication**: Better Auth (dual auth system)
+- **Authentication**: Better Auth (Platform Auth + MCP Server Auth)
 - **Database**: PostgreSQL
 - **ORM**: Drizzle ORM with type-safe operations
 - **Infrastructure**: AWS (SST framework)
@@ -116,8 +116,8 @@ mcp-obs/
 │   ├── database/            # Shared database schemas
 │   │   ├── src/
 │   │   │   ├── schema.ts                       # ✅ Basic schema (expand for features)
-│   │   │   ├── auth-schema.ts                  # 🚧 Platform auth schema
-│   │   │   ├── mcp-auth-schema.ts              # 🚧 MCP user schema
+│   │   │   ├── platform-auth-schema.ts         # 🚧 Platform auth schema (orgs, users, roles)
+│   │   │   ├── mcp-server-auth-schema.ts       # 🚧 MCP server auth schema (end-users)
 │   │   │   ├── connection.ts                   # ✅ Database connection utilities
 │   │   │   └── index.ts                        # ✅ Package exports
 │   │   ├── dist/                               # ✅ Compiled TypeScript
@@ -173,10 +173,12 @@ AWS_REGION=us-east-1
 ### Where to Implement Key Features
 
 #### Authentication System (Better Auth)
-- **Config**: `packages/dashboard/src/lib/auth.ts` - Better Auth setup with dual auth system
-- **Routes**: `packages/dashboard/src/app/api/auth/[...auth]/route.ts` - Auth endpoints
-- **Schemas**: `packages/database/src/auth-schema.ts` + `packages/database/src/mcp-auth-schema.ts`
-- **Components**: `packages/dashboard/src/components/auth/` - Login, signup, profile components
+- **Platform Auth Config**: `packages/dashboard/src/lib/platform-auth.ts` - Platform auth with organization management
+- **MCP Server Auth Config**: `packages/dashboard/src/lib/mcp-server-auth.ts` - MCP server end-user auth
+- **Routes**: `packages/dashboard/src/app/api/auth/[...auth]/route.ts` - Platform auth endpoints
+- **MCP Routes**: `packages/dashboard/src/app/api/mcp-auth/[...auth]/route.ts` - MCP server auth endpoints
+- **Schemas**: `packages/database/src/platform-auth-schema.ts` + `packages/database/src/mcp-server-auth-schema.ts`
+- **Components**: `packages/dashboard/src/components/auth/` - Login, signup, profile, organization management
 
 #### oRPC Type-Safe APIs
 - **Server Setup**: `packages/dashboard/src/lib/orpc.server.ts` - Server-side oRPC client
@@ -190,9 +192,16 @@ AWS_REGION=us-east-1
 - **Theme Config**: Use TweakCN with CSS variables in `globals.css`
 
 #### Database Schemas & Operations
-- **Platform Auth**: `packages/database/src/auth-schema.ts` - Customer users, organizations
-- **MCP User Auth**: `packages/database/src/mcp-auth-schema.ts` - End-user authentication
-- **Business Logic**: Expand `packages/database/src/schema.ts` - Servers, sessions, analytics
+- **Platform Auth**: `packages/database/src/platform-auth-schema.ts` - Customer users, organizations, roles, billing
+- **MCP Server Auth**: `packages/database/src/mcp-server-auth-schema.ts` - End-user authentication, sessions
+- **Business Logic**: Expand `packages/database/src/schema.ts` - MCP servers, analytics, usage tracking
+
+#### Organization Management Features
+- **Organization CRUD**: Create, read, update, delete organizations
+- **Member Management**: Invite users, assign roles (admin, member, viewer)
+- **MCP Server Management**: Register servers, configure auth providers per organization
+- **Usage Tracking**: Monitor API calls, sessions, and billing metrics per organization
+- **Domain Configuration**: Custom domains and subdomain management
 
 #### SDK Implementation
 - **Server SDK**: `packages/server-sdk/src/` - Auth middleware, telemetry for MCP servers
@@ -218,9 +227,22 @@ AWS_REGION=us-east-1
 - Multi-tenant data isolation via organization context
 
 ### Authentication Context
-- **Platform Auth**: Dashboard users (customers like DocuAPI)
-- **Sub-tenant Auth**: End-users of customer products (users accessing DocuAPI's MCP server)
+- **Platform Auth**: Dashboard users (customers like DocuAPI) with organization management capabilities
+- **MCP Server Auth**: End-users of customer products (users accessing DocuAPI's MCP server)
 - Clear separation between the two authentication systems
+
+#### Platform Auth Features
+- **Organization Management**: Create, manage, and configure customer organizations
+- **User Management**: Invite team members, assign roles (admin, member)
+- **MCP Server Registration**: Register and configure MCP servers per organization
+- **Billing & Usage**: Track usage metrics and manage subscriptions
+- **Domain Management**: Custom domains and subdomain configuration
+
+#### MCP Server Auth Features
+- **End-User Authentication**: OAuth flows for accessing MCP servers
+- **Multi-Provider Support**: Google, GitHub, email-based authentication
+- **Session Management**: Secure session handling per MCP server
+- **Scoped Access**: Users isolated per organization/MCP server
 
 ## Development Guidelines
 
