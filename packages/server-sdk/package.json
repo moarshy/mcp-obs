@@ -1,0 +1,28 @@
+{
+  "name": "@mcplatform/server-sdk",
+  "version": "0.1.0",
+  "description": "MCPlatform Server SDK for MCP server integration",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": ["mcp", "server", "sdk", "mcplatform"],
+  "dependencies": {
+    "@mcplatform/database": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.0",
+    "@types/node": "^20.8.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist/**/*"]
+}
