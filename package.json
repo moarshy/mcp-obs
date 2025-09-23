@@ -1,0 +1,34 @@
+{
+  "name": "mcp-obs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCPlatform - Observability and management platform for MCP servers",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "cd packages/dashboard && bun dev",
+    "build": "bun run build:packages && cd packages/dashboard && bun run build",
+    "build:packages": "cd packages/database && bun run build && cd ../server-sdk && bun run build && cd ../client-sdk && bun run build",
+    "lint": "cd packages/dashboard && bun run lint",
+    "type-check": "cd packages/database && bun run type-check && cd ../server-sdk && bun run type-check && cd ../client-sdk && bun run type-check && cd ../dashboard && bun run type-check",
+    "clean": "bun run clean:packages && cd packages/dashboard && bun run clean",
+    "clean:packages": "rm -rf packages/*/dist packages/*/build packages/*/.next",
+    "db:generate": "cd packages/dashboard && bun run db:generate",
+    "db:migrate": "cd packages/dashboard && bun run db:migrate",
+    "deploy": "bunx sst deploy",
+    "deploy:remove": "bunx sst remove"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.0",
+    "typescript": "^5.2.0"
+  },
+  "dependencies": {
+    "sst": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
+  },
+  "packageManager": "bun@1.0.0"
+}

@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "ES6"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@mcplatform/database": ["./packages/database/src"],
+      "@mcplatform/server-sdk": ["./packages/server-sdk/src"],
+      "@mcplatform/client-sdk": ["./packages/client-sdk/src"]
+    }
+  },
+  "include": ["packages/*/src/**/*", "packages/*/app/**/*"],
+  "exclude": ["node_modules", "packages/*/dist", "packages/*/build", "packages/*/.next"]
+}

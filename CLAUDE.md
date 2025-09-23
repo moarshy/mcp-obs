@@ -70,12 +70,21 @@ bun run db:generate   # Generate migrations
 bun run db:migrate    # Run migrations
 ```
 
-### Database Commands
-```bash
-bunx drizzle-kit generate    # Generate migrations
-bunx drizzle-kit migrate     # Run migrations
-bunx drizzle-kit push        # Push schema to DB
-bunx drizzle-kit studio      # Database GUI
+### Project Status
+```
+✅ SCAFFOLDING COMPLETE
+- Monorepo structure with Bun workspace
+- Next.js 15 dashboard with App Router
+- Database package with Drizzle ORM
+- Server SDK and Client SDK packages
+- SST configuration for AWS deployment
+- Development tooling (ESLint, TypeScript)
+
+🚧 IMPLEMENTATION NEEDED
+- Better Auth integration (dual auth system)
+- oRPC setup for type-safe APIs
+- shadcn/ui components and theming
+- Business logic and features per specifications
 ```
 
 ## Project Structure
@@ -86,26 +95,27 @@ mcp-obs/
 │   ├── dashboard/           # Main Next.js application
 │   │   ├── src/
 │   │   │   ├── app/         # Next.js App Router
-│   │   │   │   ├── api/
-│   │   │   │   │   ├── auth/[...auth]/route.ts  # Better Auth
-│   │   │   │   │   └── rpc/[[...rest]]/route.ts # oRPC endpoint
-│   │   │   │   └── globals.css                  # Tailwind + TweakCN
-│   │   │   ├── lib/
-│   │   │   │   ├── auth.ts                     # Better Auth config
-│   │   │   │   ├── orpc.ts                     # oRPC client
-│   │   │   │   └── orpc.server.ts              # Server-side client
-│   │   │   └── components/                     # shadcn/ui components
+│   │   │   │   ├── layout.tsx                  # Root layout
+│   │   │   │   ├── page.tsx                    # Homepage
+│   │   │   │   └── globals.css                 # Tailwind CSS
+│   │   │   ├── components/                     # (Future: shadcn/ui components)
+│   │   │   └── lib/                            # (Future: auth, oRPC, utilities)
 │   │   ├── drizzle/                            # Database migrations
 │   │   ├── drizzle.config.ts                   # Drizzle configuration
 │   │   └── postcss.config.mjs                  # PostCSS for Tailwind v4
 │   ├── database/            # Shared database schemas
 │   │   ├── src/
-│   │   │   ├── schema.ts                       # Main database schema
-│   │   │   ├── auth-schema.ts                  # Platform auth schema
-│   │   │   └── mcp-auth-schema.ts              # MCP user schema
-│   │   └── index.ts                            # Database exports
-│   ├── server-sdk/          # MCPlatform Server SDK
-│   └── client-sdk/          # MCPlatform Client SDK
+│   │   │   ├── schema.ts                       # Basic database schema
+│   │   │   ├── connection.ts                   # Database connection utilities
+│   │   │   └── index.ts                        # Package exports
+│   │   ├── dist/                               # Compiled TypeScript
+│   │   └── tsconfig.json                       # TypeScript config
+│   ├── server-sdk/          # MCPlatform Server SDK (placeholder)
+│   │   ├── src/index.ts                        # SDK interface
+│   │   └── dist/                               # Compiled TypeScript
+│   └── client-sdk/          # MCPlatform Client SDK (placeholder)
+│       ├── src/index.ts                        # Client interface
+│       └── dist/                               # Compiled TypeScript
 ├── docs/
 │   └── 0.prd.md             # Product Requirements Document
 ├── specifications/
