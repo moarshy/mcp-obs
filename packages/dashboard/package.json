@@ -18,7 +18,8 @@
     "react-dom": "^18.2.0",
     "drizzle-orm": "^0.33.0",
     "postgres": "^3.4.0",
-    "@mcplatform/database": "workspace:*"
+    "@mcplatform/database": "workspace:*",
+    "sst": "^3.0.0"
   },
   "devDependencies": {
     "typescript": "^5.2.0",

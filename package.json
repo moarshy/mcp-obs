@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "dev": "cd packages/dashboard && bun dev",
+    "dev:tunnel": "bun run scripts/ngrok.ts",
     "build": "bun run build:packages && cd packages/dashboard && bun run build",
     "build:packages": "cd packages/database && bun run build && cd ../server-sdk && bun run build && cd ../client-sdk && bun run build",
     "lint": "cd packages/dashboard && bun run lint",
@@ -16,6 +17,8 @@
     "clean:packages": "rm -rf packages/*/dist packages/*/build packages/*/.next",
     "db:generate": "cd packages/dashboard && bun run db:generate",
     "db:migrate": "cd packages/dashboard && bun run db:migrate",
+    "studio": "cd packages/dashboard && bunx drizzle-kit studio",
+    "sst:dev": "bunx sst dev",
     "deploy": "bunx sst deploy",
     "deploy:remove": "bunx sst remove"
   },
@@ -24,7 +27,8 @@
     "typescript": "^5.2.0"
   },
   "dependencies": {
-    "sst": "^3.0.0"
+    "sst": "^3.0.0",
+    "@ngrok/ngrok": "^1.4.0"
   },
   "engines": {
     "node": ">=18.0.0",

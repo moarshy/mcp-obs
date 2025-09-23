@@ -1,19 +1,11 @@
-import postgres from 'postgres'
-import { drizzle } from 'drizzle-orm/postgres-js'
+import 'dotenv/config'
+import { drizzle } from 'drizzle-orm/node-postgres'
+import { Resource } from 'sst'
 import * as schema from './schema'
 
-// Database connection utility
-export function createConnection(connectionString: string) {
-  const client = postgres(connectionString, {
-    max: 10,
-    idle_timeout: 20,
-    connect_timeout: 10,
-  })
+const pg = Resource.Postgres
+const dbUrl = `postgresql://${pg.username}:${pg.password}@${pg.host}:${pg.port}/${pg.database}`
 
-  return drizzle(client, { schema })
-}
-
-// Default connection for development (will be overridden in production)
-export const db = createConnection(
-  process.env.DATABASE_URL || 'postgresql://localhost:5432/mcplatform_dev'
-)
+export const db = drizzle(dbUrl, {
+    schema: schema
+})

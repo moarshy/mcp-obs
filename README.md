@@ -37,7 +37,6 @@ mcp-obs/
 
 2. **Set up environment variables:**
    ```bash
-   cd packages/dashboard
    cp .env.example .env.local
    # Edit .env.local with your database URL and other settings
    ```
@@ -66,6 +65,9 @@ The dashboard will be available at http://localhost:3000
 # Start development server
 bun dev
 
+# Start development server with ngrok tunnel (for webhook testing)
+bun run dev:tunnel
+
 # Build all packages
 bun run build
 
@@ -86,10 +88,16 @@ bun run db:generate
 
 # Apply database migrations
 bun run db:migrate
+
+# Open Drizzle Studio for database management
+bun run studio
 ```
 
-### Deployment Commands
+### SST/AWS Commands
 ```bash
+# Start SST development mode
+bun run sst:dev
+
 # Deploy to AWS (requires AWS credentials)
 bun run deploy
 
@@ -139,18 +147,43 @@ This project uses [SST](https://sst.dev/) for AWS infrastructure:
 
 ## Environment Variables
 
-Key environment variables (see `packages/dashboard/.env.example`):
+Key environment variables (see `.env.example` in project root):
 
-- `DATABASE_URL` - PostgreSQL connection string
-- `BETTER_AUTH_SECRET` - Authentication secret key
+- `DATABASE_URL` - PostgreSQL connection string (development only, production uses SST Resource)
+- `BETTER_AUTH_SECRET` - Authentication secret key (32+ characters)
+- `GITHUB_CLIENT_ID/SECRET` - GitHub OAuth app credentials
+- `GOOGLE_CLIENT_ID/SECRET` - Google OAuth app credentials
+- `NGROK_STATIC_URL` - Static ngrok domain (optional, for webhook testing)
+- `NGROK_AUTH_TOKEN` - Ngrok authentication token
 - `AWS_REGION` - AWS deployment region
+
+### Ngrok Setup (Optional)
+
+For webhook testing and external service integration during development:
+
+1. **Sign up for ngrok** and get a static domain
+2. **Add to .env.local:**
+   ```bash
+   NGROK_STATIC_URL=your-domain.ngrok-free.app
+   NGROK_AUTH_TOKEN=your-ngrok-auth-token
+   ```
+3. **Run with tunnel:**
+   ```bash
+   # Terminal 1: Start ngrok tunnel
+   bun run dev:tunnel
+
+   # Terminal 2: Start development server
+   bun dev
+   ```
+
+Your app will be accessible via `https://your-domain.ngrok-free.app` for external webhook testing.
 
 ## Tech Stack
 
 - **Runtime:** Bun
 - **Framework:** Next.js 15 (App Router)
 - **Language:** TypeScript (strict mode)
-- **Database:** PostgreSQL with Drizzle ORM
+- **Database:** PostgreSQL with Drizzle ORM (via SST Resource)
 - **Styling:** Tailwind CSS v4
 - **Infrastructure:** AWS via SST
 - **Authentication:** Better Auth (to be configured)
