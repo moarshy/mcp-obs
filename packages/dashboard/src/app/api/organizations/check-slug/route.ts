@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { db } from 'database'
 import { organization } from 'database/src/auth-schema'
 import { eq } from 'drizzle-orm'

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
