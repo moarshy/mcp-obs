@@ -7,7 +7,7 @@ console.log(`loading drizzle config...`, __dirname)
 const dbUrl = `postgresql://${Resource.Postgres.username}:${Resource.Postgres.password}@${Resource.Postgres.host}:${Resource.Postgres.port}/${Resource.Postgres.database}`
 export default defineConfig({
     dialect: 'postgresql',
-    schema: ['./src/auth-schema.ts'],
+    schema: ['./src/auth-schema.ts', './src/mcp-auth-schema.ts'],
     dbCredentials: {
         url: dbUrl
     },
