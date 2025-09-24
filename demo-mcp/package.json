@@ -1,0 +1,31 @@
+{
+  "name": "demo-mcp",
+  "version": "1.0.0",
+  "description": "Demo MCP server and client implementation",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --build server client",
+    "dev:server": "tsx server/src/index.ts",
+    "dev:server:http": "tsx server/src/http-server.ts",
+    "dev:client": "tsx client/src/index.ts",
+    "dev:client:http": "tsx client/src/http-client.ts",
+    "start:server": "node server/dist/index.js",
+    "start:server:http": "node server/dist/http-server.js",
+    "start:client": "node client/dist/index.js",
+    "start:client:http": "node client/dist/http-client.js",
+    "demo": "npm run dev:client",
+    "demo:http": "npm run dev:client:http"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.18.1",
+    "express": "^4.18.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/express": "^4.17.0",
+    "@types/cors": "^2.8.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  }
+}
