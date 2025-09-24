@@ -1,7 +1,7 @@
 import { defineConfig } from 'drizzle-kit'
 
 export default defineConfig({
-  schema: '../database/src/auth-schema.ts',
+  schema: ['../database/src/auth-schema.ts', '../database/src/mcp-auth-schema.ts'],
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
