@@ -26,18 +26,18 @@ export default async function DashboardLayout({
   ]
 
   return (
-    <div className="min-h-screen bg-gray-900 flex">
+    <div className="min-h-screen bg-background flex">
       <DashboardSidebar user={user} organizations={displayOrganizations} />
       <main className="flex-1 overflow-hidden">
-        <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+        <div className="bg-card border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-semibold text-white">Dashboard</h1>
-              <p className="text-sm text-gray-400">Overview of your organization's activity and insights</p>
+              <h1 className="text-xl font-semibold text-card-foreground">Dashboard</h1>
+              <p className="text-sm text-muted-foreground">Overview of your organization's activity and insights</p>
             </div>
           </div>
         </div>
-        <div className="p-6">
+        <div className="p-6 bg-background">
           {children}
         </div>
       </main>

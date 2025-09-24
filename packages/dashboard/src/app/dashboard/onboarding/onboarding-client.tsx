@@ -26,21 +26,21 @@ export function OnboardingClient({ user }: OnboardingClientProps) {
   }, [searchParams])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         {showAlert && (
-          <div className="mb-6 rounded-md bg-blue-50 p-4 border border-blue-200">
+          <div className="mb-6 rounded-md bg-primary/10 p-4 border border-primary/20">
             <div className="flex">
               <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-5 w-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-800">
+                <h3 className="text-sm font-medium text-primary">
                   Organization Required
                 </h3>
-                <div className="mt-2 text-sm text-blue-700">
+                <div className="mt-2 text-sm text-muted-foreground">
                   <p>You need to create an organization before accessing the dashboard.</p>
                 </div>
                 <div className="mt-4">
@@ -48,7 +48,7 @@ export function OnboardingClient({ user }: OnboardingClientProps) {
                     <button
                       type="button"
                       onClick={() => setShowAlert(false)}
-                      className="ml-auto rounded-md bg-blue-50 px-2 py-1.5 text-sm font-medium text-blue-800 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 focus:ring-offset-blue-50"
+                      className="ml-auto rounded-md bg-primary/10 px-2 py-1.5 text-sm font-medium text-primary hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
                     >
                       Dismiss
                     </button>
@@ -60,8 +60,8 @@ export function OnboardingClient({ user }: OnboardingClientProps) {
         )}
 
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to mcp-obs</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Welcome to mcp-obs</h1>
+          <p className="text-muted-foreground">
             Let's set up your organization to get started
           </p>
         </div>
@@ -69,9 +69,9 @@ export function OnboardingClient({ user }: OnboardingClientProps) {
         <OrganizationForm />
 
         <div className="text-center mt-6">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Already have an organization?{' '}
-            <a href="/dashboard" className="text-blue-600 hover:underline">
+            <a href="/dashboard" className="text-primary hover:underline">
               Go to Dashboard
             </a>
           </p>

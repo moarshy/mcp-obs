@@ -87,9 +87,9 @@ export function DashboardSidebar({ user, organizations }: DashboardSidebarProps)
   }
 
   return (
-    <div className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col">
+    <div className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
       {/* Logo */}
-      <div className="flex items-center px-6 py-4 border-b border-gray-800">
+      <div className="flex items-center px-6 py-4 border-b border-sidebar-border">
         <div className="flex items-center">
           <div className="w-8 h-8 rounded-lg overflow-hidden">
             <Image
@@ -100,13 +100,13 @@ export function DashboardSidebar({ user, organizations }: DashboardSidebarProps)
               className="w-full h-full object-cover"
             />
           </div>
-          <span className="ml-3 text-white font-semibold">mcp-obs</span>
+          <span className="ml-3 text-sidebar-foreground font-semibold">mcp-obs</span>
         </div>
       </div>
 
       {/* Organization Switcher */}
       {currentOrganization && (
-        <div className="px-4 py-4 border-b border-gray-800">
+        <div className="px-4 py-4 border-b border-sidebar-border">
           <div className="relative">
             <button
               onClick={() => setShowOrgDropdown(!showOrgDropdown)}
