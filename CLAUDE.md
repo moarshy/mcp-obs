@@ -294,3 +294,15 @@ bun run build             # Production build test
 ---
 
 **Quick Start**: Run `bun dev` after setup to start development server. The project essence is captured in `/docs/0.prd.md` for detailed business context.
+
+## Development TODOs
+
+### Security Enhancements (Post-MVP)
+- [ ] **Password Security**: Implement bcrypt password hashing and strength requirements
+- [ ] **Enhanced Auth Security**: Add rate limiting, account lockout policies, and brute force protection
+- [ ] **Session Security**: Implement session timeout policies and concurrent session limits
+
+### Email Features (Post-MVP)
+- [ ] **Team Invitation Emails**: Replace shareable links with email-based invitation system
+- [ ] **Email Templates**: Professional email templates for invitations, welcome messages, and notifications
+- [ ] **Email Provider Integration**: Configure SendGrid, AWS SES, or similar for production email delivery
