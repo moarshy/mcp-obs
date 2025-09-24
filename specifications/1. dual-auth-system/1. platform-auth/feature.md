@@ -15,11 +15,11 @@ type: feature
 # Platform Authentication System Feature
 
 ## Overview
-Implement a complete platform authentication system using Better Auth with multi-organization support, enabling MCPlatform customers to sign up, manage organizations, and access the protected dashboard. This system handles authentication for platform users (customers like DocuAPI) who manage MCP servers, with full organization switching capabilities and role-based access.
+Implement a complete platform authentication system using Better Auth with multi-organization support, enabling mcp-obs customers to sign up, manage organizations, and access the protected dashboard. This system handles authentication for platform users (customers like DocuAPI) who manage MCP servers, with full organization switching capabilities and role-based access.
 
 ## Business Value
 
-### For MCPlatform Customers
+### For mcp-obs Customers
 - **Zero Auth Implementation**: Complete authentication infrastructure without building OAuth, user management, or session handling
 - **Multi-Organization Support**: Users can belong to multiple organizations with different roles, enabling team collaboration across companies
 - **Enterprise-Ready**: Role-based access control with Owner, Admin, and Member roles, invitation workflows, and organization management out of the box
@@ -57,7 +57,7 @@ Platform authentication uses dedicated Better Auth schema with organization plug
 (in given/when/then format)
 
 ### New User Registration & Setup
-1. **New Customer**: **Given** I'm a new customer visiting mcplatform.com, **when** I click "Sign Up", **then** I should be able to create an account with email/password or social OAuth (Google, GitHub) and be guided through organization creation - *Complete signup and org setup flow in under 2 minutes with clear onboarding*
+1. **New Customer**: **Given** I'm a new customer visiting mcp-obs.com, **when** I click "Sign Up", **then** I should be able to create an account with email/password or social OAuth (Google, GitHub) and be guided through organization creation - *Complete signup and org setup flow in under 2 minutes with clear onboarding*
 
 2. **Organization Creator**: **Given** I just signed up, **when** I complete registration, **then** I should be prompted to create my first organization with name and slug, automatically becoming the admin - *Seamless transition from personal account to organization setup*
 
@@ -122,7 +122,7 @@ Platform authentication uses dedicated Better Auth schema with organization plug
 ## Design Considerations
 
 ### Layout & UI
-- **Authentication Pages**: Clean, centered forms with MCPlatform branding and clear CTAs
+- **Authentication Pages**: Clean, centered forms with mcp-obs branding and clear CTAs
 - **Dashboard Layout**: Sidebar navigation with organization switcher, user menu, and main content area
 - **Organization Switcher**: Dropdown or modal interface showing all user organizations with search
 - **Loading States**: Skeleton loading for authentication checks and organization data
@@ -500,4 +500,4 @@ export const authProcedures = router({
 })
 ```
 
-This comprehensive platform authentication system provides the foundation for all MCPlatform customer interactions, with robust multi-organization support and enterprise-ready user management capabilities.
+This comprehensive platform authentication system provides the foundation for all mcp-obs customer interactions, with robust multi-organization support and enterprise-ready user management capabilities.
