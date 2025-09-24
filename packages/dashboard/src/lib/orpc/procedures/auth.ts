@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { router } from '@orpc/server'
+import { os } from '@orpc/server'
 import { protectedProcedure, publicProcedure } from '../server'
 import { auth } from '@/lib/auth'
 import { ORPCError } from '@orpc/server'
@@ -22,7 +22,7 @@ const inviteMemberSchema = z.object({
   role: z.enum(['owner', 'admin', 'member']).default('member'),
 })
 
-export const authProcedures = router({
+export const authProcedures = os({
   // Get current user with organizations
   getMe: protectedProcedure
     .query(async ({ ctx }) => {

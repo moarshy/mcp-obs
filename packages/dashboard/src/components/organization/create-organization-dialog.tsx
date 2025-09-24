@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Loader2 } from 'lucide-react'
+import { authClient } from '@/lib/auth/client'
 
 const createOrganizationSchema = z.object({
   name: z.string().min(2, 'Organization name must be at least 2 characters'),
@@ -155,25 +156,11 @@ export function CreateOrganizationDialog({
       setIsLoading(true)
       setError(null)
 
-      const response = await fetch('/api/rpc', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          method: 'auth.createOrganization',
-          params: {
-            name: data.name,
-            slug: data.slug,
-            description: data.description,
-          },
-        }),
+      // Use the same method as the working OrganizationForm
+      const result = await authClient.organization.create({
+        name: data.name,
+        slug: data.slug,
       })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to create organization')
-      }
-
-      const result = await response.json()
 
       if (result.error) {
         throw new Error(result.error.message || 'Failed to create organization')
