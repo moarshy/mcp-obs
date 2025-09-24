@@ -14,8 +14,8 @@
     "type-check": "cd packages/database && bun run type-check && cd ../server-sdk && bun run type-check && cd ../client-sdk && bun run type-check && cd ../dashboard && bun run type-check",
     "clean": "bun run clean:packages && cd packages/dashboard && bun run clean",
     "clean:packages": "rm -rf packages/*/dist packages/*/build packages/*/.next",
-    "db:generate": "cd packages/dashboard && bun run db:generate",
-    "db:migrate": "cd packages/dashboard && bun run db:migrate",
+    "db:generate": "cd packages/database && bun run db:generate",
+    "db:migrate": "cd packages/database && bun run db:migrate",
     "studio": "cd packages/database && bun run db:studio",
     "db:push": "cd packages/database && bun run db:push",
     "dev": "sst dev"
