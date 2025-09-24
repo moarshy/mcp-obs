@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "demo-mcp-obs": {
+      "command": "/Users/arshath/play/naptha/mcp-obs/demo-mcp/node_modules/.bin/tsx",
+      "args": ["/Users/arshath/play/naptha/mcp-obs/demo-mcp/server/src/index.ts"],
+      "cwd": "/Users/arshath/play/naptha/mcp-obs/demo-mcp",
+      "description": "Demo MCP server with echo tool that responds 'hello from mcp-obs'"
+    }
+  }
+}
