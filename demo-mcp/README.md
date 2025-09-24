@@ -48,14 +48,14 @@ This will:
 4. Call the echo tool with different messages
 5. Clean up and disconnect
 
-### HTTP Transport Demo
+### SSE Transport Demo
 
-**Terminal 1** - Start HTTP server:
+**Terminal 1** - Start SSE server:
 ```bash
 bun run dev:server:http
 ```
 
-**Terminal 2** - Run HTTP client:
+**Terminal 2** - Run SSE client:
 ```bash
 bun run dev:client:http
 ```
@@ -67,10 +67,11 @@ bun run dev:client:http
 bun run dev:server
 ```
 
-**HTTP Server**:
+**SSE Server**:
 ```bash
 bun run dev:server:http
-# Available at http://localhost:3001/mcp
+# SSE endpoint: http://localhost:3003/sse
+# Messages endpoint: http://localhost:3003/messages
 ```
 
 **Stdio Client**:
@@ -78,7 +79,7 @@ bun run dev:server:http
 bun run dev:client
 ```
 
-**HTTP Client**:
+**SSE Client**:
 ```bash
 bun run dev:client:http
 ```
@@ -122,6 +123,21 @@ The demo implements a single MCP tool called `echo`:
 ✨ Demo completed!
 ```
 
+## Cursor Integration
+
+The demo MCP servers can be used with Cursor IDE:
+
+1. **Configuration**: Located at `/Users/arshath/play/naptha/mcp-obs/.cursor/mcp.json`
+2. **Two servers available**:
+   - `demo-mcp-obs-stdio`: Process-based (always available)
+   - `demo-mcp-obs-sse`: HTTP-based (requires `bun run dev:server:http`)
+
+**Usage in Cursor**:
+- Restart Cursor and open this project
+- Use `@demo-mcp-obs-stdio` for stdio transport
+- Use `@demo-mcp-obs-sse` for SSE transport (start server first)
+- Both provide the same `echo` tool with "hello from mcp-obs" responses
+
 ## Development
 
 **Build for production**:
@@ -132,7 +148,12 @@ bun run build
 **Run built version**:
 ```bash
 bun run start:client  # stdio demo
-bun run start:client:http  # http demo
+bun run start:client:http  # SSE demo
+```
+
+**Test both transports**:
+```bash
+./test-both-transports.sh
 ```
 
 ## Dependencies
