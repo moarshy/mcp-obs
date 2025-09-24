@@ -1,8 +1,10 @@
 import { drizzle } from 'drizzle-orm/node-postgres'
 import * as authSchema from './src/auth-schema'
+import * as mcpAuthSchema from './src/mcp-auth-schema'
 
 export const schema = {
     ...authSchema,
+    ...mcpAuthSchema,
 }
 
 let dbUrl: string
@@ -22,3 +24,4 @@ export const db = drizzle(dbUrl, {
     schema: schema
 })
 export * from './src/auth-schema'
+export * from './src/mcp-auth-schema'
