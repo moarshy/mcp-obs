@@ -37,14 +37,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "echo",
-        description: "Echo a message back with a greeting from mcp-obs (HTTP version)",
+        description: "Echo a message back with a greeting from mcp-obs via SSE transport",
         inputSchema: {
           type: "object",
           properties: {
             message: {
               type: "string",
               description: "The message to echo back",
-              default: "Hello World from HTTP!",
+              default: "Hello World from SSE!",
             },
           },
         },
@@ -56,13 +56,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   if (request.params.name === "echo") {
     const args = request.params.arguments as EchoArgs;
-    const message = args?.message || "Hello World from HTTP!";
+    const message = args?.message || "Hello World from SSE!";
 
     return {
       content: [
         {
           type: "text",
-          text: `hello from mcp-obs (HTTP): ${message}`,
+          text: `hello from mcp-obs (SSE): ${message}`,
         },
       ],
     };

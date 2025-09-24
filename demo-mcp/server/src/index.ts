@@ -28,7 +28,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "echo",
-        description: "Echo a message back with a greeting from mcp-obs",
+        description: "Echo a message back with a greeting from mcp-obs via stdio transport",
         inputSchema: {
           type: "object",
           properties: {
@@ -53,7 +53,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       content: [
         {
           type: "text",
-          text: `hello from mcp-obs: ${message}`,
+          text: `hello from mcp-obs (stdio): ${message}`,
         },
       ],
     };
