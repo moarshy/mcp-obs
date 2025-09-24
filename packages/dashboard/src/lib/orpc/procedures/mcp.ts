@@ -11,8 +11,17 @@ const createMcpServerSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be 100 characters or less'),
   slug: z.string().min(2, 'Slug must be at least 2 characters').max(50, 'Slug must be 50 characters or less'),
   description: z.string().max(500, 'Description must be 500 characters or less').optional(),
-  logoUrl: z.string().url('Logo URL must be a valid URL').optional(),
   organizationId: z.string().uuid('Organization ID must be a valid UUID'),
+
+  // Server configuration
+  enabled: z.boolean().optional().default(true),
+  allowRegistration: z.boolean().optional().default(true),
+  requireEmailVerification: z.boolean().optional().default(false),
+
+  // Authentication methods
+  enablePasswordAuth: z.boolean().optional().default(true),
+  enableGoogleAuth: z.boolean().optional().default(true),
+  enableGithubAuth: z.boolean().optional().default(true),
 
   // OAuth Configuration (optional overrides)
   accessTokenExpiration: z.number().int().min(300).max(86400).optional(), // 5 minutes to 24 hours
@@ -84,10 +93,10 @@ export const mcpProcedures = os({
 
         // Validate slug
         const slugValidation = await validateMcpServerSlug(input.slug)
-        if (!slugValidation.valid) {
+        if (!slugValidation.available) {
           throw new ORPCError({
             code: 400,
-            message: slugValidation.error,
+            message: slugValidation.message,
           })
         }
 
@@ -99,7 +108,6 @@ export const mcpProcedures = os({
           name: input.name,
           slug: input.slug,
           description: input.description,
-          logoUrl: input.logoUrl,
           organizationId: input.organizationId,
           issuerUrl: endpoints.issuerUrl,
           authorizationEndpoint: endpoints.authorizationEndpoint,
@@ -110,6 +118,12 @@ export const mcpProcedures = os({
           accessTokenExpiration: input.accessTokenExpiration || 7200,
           refreshTokenExpiration: input.refreshTokenExpiration || 604800,
           scopesSupported: input.scopesSupported || 'read,write',
+          enabled: input.enabled ?? true,
+          allowRegistration: input.allowRegistration ?? true,
+          requireEmailVerification: input.requireEmailVerification ?? false,
+          enablePasswordAuth: input.enablePasswordAuth ?? true,
+          enableGoogleAuth: input.enableGoogleAuth ?? true,
+          enableGithubAuth: input.enableGithubAuth ?? true,
         }).returning()
 
         return newServer[0]
@@ -261,10 +275,10 @@ export const mcpProcedures = os({
         // If updating slug, validate it
         if (input.slug && input.slug !== server.slug) {
           const slugValidation = await validateMcpServerSlug(input.slug, input.id)
-          if (!slugValidation.valid) {
+          if (!slugValidation.available) {
             throw new ORPCError({
               code: 400,
-              message: slugValidation.error,
+              message: slugValidation.message,
             })
           }
         }
@@ -376,7 +390,10 @@ export const mcpProcedures = os({
     }))
     .query(async ({ input }) => {
       const validation = await validateMcpServerSlug(input.slug, input.excludeServerId)
-      return validation
+      return {
+        available: validation.available,
+        message: validation.message
+      }
     }),
 
   // Generate slug suggestions

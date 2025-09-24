@@ -15,28 +15,28 @@ const RESERVED_SLUGS = [
 export async function validateMcpServerSlug(
   slug: string,
   excludeServerId?: string
-): Promise<{ valid: boolean; error?: string }> {
+): Promise<{ available: boolean; message: string }> {
   // Basic validation
   if (!slug || slug.length < 2) {
-    return { valid: false, error: 'Slug must be at least 2 characters long' }
+    return { available: false, message: 'Slug must be at least 2 characters long' }
   }
 
   if (slug.length > 50) {
-    return { valid: false, error: 'Slug must be 50 characters or less' }
+    return { available: false, message: 'Slug must be 50 characters or less' }
   }
 
   // Format validation
   const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
   if (!slugRegex.test(slug)) {
     return {
-      valid: false,
-      error: 'Slug must contain only lowercase letters, numbers, and hyphens (no consecutive hyphens or leading/trailing hyphens)'
+      available: false,
+      message: 'Slug must contain only lowercase letters, numbers, and hyphens (no consecutive hyphens or leading/trailing hyphens)'
     }
   }
 
   // Reserved slug check
   if (RESERVED_SLUGS.includes(slug)) {
-    return { valid: false, error: 'This slug is reserved and cannot be used' }
+    return { available: false, message: 'This slug is reserved and cannot be used' }
   }
 
   // Database uniqueness check
@@ -47,10 +47,10 @@ export async function validateMcpServerSlug(
     .limit(1)
 
   if (existingServer.length > 0 && existingServer[0].id !== excludeServerId) {
-    return { valid: false, error: 'This slug is already taken' }
+    return { available: false, message: 'This slug is already taken' }
   }
 
-  return { valid: true }
+  return { available: true, message: 'Slug is available' }
 }
 
 export async function generateSuggestedSlug(baseName: string): Promise<string[]> {

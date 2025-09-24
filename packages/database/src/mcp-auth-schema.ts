@@ -27,6 +27,14 @@ export const mcpServer = pgTable('mcp_server', {
   accessTokenExpiration: integer('access_token_expiration').notNull().default(7200), // 2 hours
   refreshTokenExpiration: integer('refresh_token_expiration').notNull().default(604800), // 7 days
   requirePkce: boolean('require_pkce').notNull().default(true),
+  enabled: boolean('enabled').notNull().default(true),
+  allowRegistration: boolean('allow_registration').notNull().default(true),
+  requireEmailVerification: boolean('require_email_verification').notNull().default(false),
+
+  // Authentication methods
+  enablePasswordAuth: boolean('enable_password_auth').notNull().default(true),
+  enableGoogleAuth: boolean('enable_google_auth').notNull().default(true),
+  enableGithubAuth: boolean('enable_github_auth').notNull().default(true),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
