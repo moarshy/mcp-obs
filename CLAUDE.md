@@ -1,24 +1,24 @@
-# MCPlatform Project Guide
+# mcp-obs Project Guide
 
 ## Project Essence
 
-**MCPlatform** is the "Auth0 + OpenTelemetry for MCP servers" - a comprehensive Next.js application that provides enterprise-grade authentication proxy and observability infrastructure for Model Context Protocol (MCP) servers.
+**mcp-obs** is the "Auth0 + OpenTelemetry for MCP servers" - a comprehensive Next.js application that provides enterprise-grade authentication proxy and observability infrastructure for Model Context Protocol (MCP) servers.
 
 **Value Proposition**: Enable companies to add authentication and OpenTelemetry-based observability to their MCP servers in minutes, without building auth infrastructure themselves.
 
 ## Architecture Overview
 
 ### Core Components
-- **MCPlatform Infrastructure**: Next.js app with OAuth service, OpenTelemetry collector, and customer dashboard
-- **MCPlatform SDK**:
+- **mcp-obs Infrastructure**: Next.js app with OAuth service, OpenTelemetry collector, and customer dashboard
+- **mcp-obs SDK**:
   - **Server-Side SDK**: Integration library for customers' MCP servers (auth middleware, telemetry)
   - **Client-Side SDK**: Integration for MCP clients (OAuth handling, session management)
 - **Dual Auth System**: Platform Auth (customers with organization management) + MCP Server Auth (end-users)
 
 ### Key Technical Flow
-1. Customer (e.g., DocuAPI) registers MCP server → gets subdomain (docuapi.mcplatform.com)
-2. Integrates MCPlatform Server SDK into existing MCP server
-3. End-users authenticate through MCPlatform OAuth when accessing MCP server
+1. Customer (e.g., DocuAPI) registers MCP server → gets subdomain (docuapi.mcp-obs.com)
+2. Integrates mcp-obs Server SDK into existing MCP server
+3. End-users authenticate through mcp-obs OAuth when accessing MCP server
 4. **Distributed Tracing**: Both client and server SDKs send OpenTelemetry to Next.js collector
 5. Next.js exports telemetry to customer's observability platform (Datadog, Grafana, etc.)
 6. Customer gets complete user analytics, usage metrics, and business intelligence
@@ -122,14 +122,14 @@ mcp-obs/
 │   │   │   └── index.ts                        # ✅ Package exports
 │   │   ├── dist/                               # ✅ Compiled TypeScript
 │   │   └── tsconfig.json                       # ✅ TypeScript config
-│   ├── server-sdk/          # MCPlatform Server SDK
+│   ├── server-sdk/          # mcp-obs Server SDK
 │   │   ├── src/
 │   │   │   ├── index.ts                        # ✅ Main SDK interface
 │   │   │   ├── auth-middleware.ts              # 🚧 Auth integration for MCP servers
 │   │   │   ├── telemetry.ts                    # 🚧 OpenTelemetry instrumentation
 │   │   │   └── types.ts                        # 🚧 TypeScript definitions
 │   │   └── dist/                               # ✅ Compiled TypeScript
-│   └── client-sdk/          # MCPlatform Client SDK
+│   └── client-sdk/          # mcp-obs Client SDK
 │       ├── src/
 │       │   ├── index.ts                        # ✅ Main client interface
 │       │   ├── oauth-client.ts                 # 🚧 OAuth handling for MCP clients
@@ -157,7 +157,7 @@ Legend: ✅ Implemented | 🚧 To be implemented following this guide
 ### Environment Variables
 ```bash
 # Database
-DATABASE_URL=postgresql://user:password@localhost:5432/mcplatform
+DATABASE_URL=postgresql://user:password@localhost:5432/mcp_obs
 
 # Better Auth
 BETTER_AUTH_SECRET=your-secret-key

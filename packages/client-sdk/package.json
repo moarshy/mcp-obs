@@ -3,8 +3,8 @@
     "module": "index.ts",
     "type": "module",
     "version": "0.1.0",
-    "description": "MCPlatform Client SDK for frontend applications",
-    "keywords": ["mcp", "client", "sdk", "mcplatform", "frontend"],
+    "description": "mcp-obs Client SDK for frontend applications",
+    "keywords": ["mcp", "client", "sdk", "mcp-obs", "frontend"],
     "dependencies": {
         "database": "workspace:*",
         "zod": "^3.25.50"

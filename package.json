@@ -2,7 +2,7 @@
   "name": "mcp-obs",
   "version": "0.1.0",
   "private": true,
-  "description": "MCPlatform - Observability and management platform for MCP servers",
+  "description": "mcp-obs - Observability and management platform for MCP servers",
   "workspaces": [
     "packages/*"
   ],
@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@ngrok/ngrok": "^1.5.1",
-    "sst": "3.17.10"
+    "sst": "^3.17.14"
   },
   "engines": {
     "node": ">=18.0.0",

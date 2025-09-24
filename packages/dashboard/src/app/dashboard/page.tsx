@@ -2,8 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getServerSession } from '@/lib/auth'
 
 export const metadata = {
-  title: 'Dashboard | MCPlatform',
-  description: 'MCPlatform dashboard for managing MCP servers and organizations',
+  title: 'Dashboard | mcp-obs',
+  description: 'mcp-obs dashboard for managing MCP servers and organizations',
 }
 
 export default async function DashboardPage() {
@@ -78,12 +78,12 @@ export default async function DashboardPage() {
               1
             </div>
             <div>
-              <h3 className="font-medium">Install the MCPlatform Server SDK</h3>
+              <h3 className="font-medium">Install the mcp-obs Server SDK</h3>
               <p className="text-sm text-gray-600 mt-1">
                 Add authentication and observability to your MCP server with our SDK
               </p>
               <code className="text-xs bg-gray-100 px-2 py-1 rounded mt-2 block">
-                npm install @mcplatform/server-sdk
+                npm install @mcp-obs/server-sdk
               </code>
             </div>
           </div>

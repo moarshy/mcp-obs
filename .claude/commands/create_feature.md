@@ -96,7 +96,7 @@ This command combines feature discovery and requirements specification into a un
    - What does the user experience flow look like?
 
 3. **Consider implementation context**:
-   - How does this fit with existing MCPlatform architecture?
+   - How does this fit with existing mcp-obs architecture?
    - Dashboard vs. MCP tools vs. both?
    - Authentication considerations (platform vs. sub-tenant)?
    - Database/storage implications?
@@ -190,7 +190,7 @@ type: feature
 
 ## Business Value
 
-### For MCPlatform Customers
+### For mcp-obs Customers
 - [How this helps our paying customers]
 - [Business problems this solves]
 - [Revenue/retention/satisfaction impacts]
@@ -385,8 +385,8 @@ Exceptions:
 - Question feature ideas that don't clearly solve user problems
 - Explore how users would discover and adopt the feature
 
-### Consider MCPlatform Context
-- How does this feature advance MCPlatform's mission?
+### Consider mcp-obs Context
+- How does this feature advance mcp-obs's mission?
 - Does this help with de-anonymization or engagement?
 - How does this fit with existing architecture patterns?
 - What authentication system applies (platform vs. sub-tenant)?
@@ -405,7 +405,7 @@ Before finalizing the feature specification:
 - [ ] Success metrics that can actually be measured
 - [ ] Document follows template structure with proper metadata
 
-## Common Patterns for MCPlatform
+## Common Patterns for mcp-obs
 
 ### Authentication Context
 Always clarify which authentication system applies:

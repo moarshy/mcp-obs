@@ -12,11 +12,11 @@
         "db:auth:migrate": "bunx @better-auth/cli migrate"
     },
     "dependencies": {
+        "dotenv": "^17.2.0",
+        "drizzle-kit": "^0.31.4",
         "drizzle-orm": "^0.44.2",
         "pg": "^8.16.3",
-        "dotenv": "^17.2.0",
-        "sst": "^3.0.0",
-        "drizzle-kit": "^0.24.0",
+        "sst": "^3.17.14",
         "zod": "^3.25.50"
     },
     "devDependencies": {

@@ -1,4 +1,6 @@
-import { ORPCError, procedure, router } from '@orpc/server'
+import { ORPCError } from '@orpc/server'
+import { procedure } from '@orpc/server/procedure'
+import { router } from '@orpc/server/router'
 import { db } from 'database'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
@@ -47,7 +49,7 @@ export const protectedProcedure = procedure
 
     if (!context.session || !context.user) {
       throw new ORPCError({
-        code: 'UNAUTHORIZED',
+        code: 401,
         message: 'Authentication required',
       })
     }

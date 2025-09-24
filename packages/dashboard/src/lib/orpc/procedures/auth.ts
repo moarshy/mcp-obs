@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { router } from '@orpc/server'
+import { router } from '@orpc/server/router'
 import { protectedProcedure, publicProcedure } from '../server'
 import { auth } from '@/lib/auth'
 import { ORPCError } from '@orpc/server'
@@ -27,7 +27,7 @@ export const authProcedures = router({
   getMe: protectedProcedure
     .query(async ({ ctx }) => {
       try {
-        const organizations = await auth.api.listUserOrganizations({
+        const organizations = await auth.api.listOrganizations({
           userId: ctx.user.id,
         })
 
@@ -59,7 +59,7 @@ export const authProcedures = router({
       } catch (error) {
         console.error('Error creating organization:', error)
         throw new ORPCError({
-          code: 'BAD_REQUEST',
+          code: 400,
           message: error instanceof Error ? error.message : 'Failed to create organization',
         })
       }
@@ -71,14 +71,14 @@ export const authProcedures = router({
     .query(async ({ input, ctx }) => {
       try {
         // First check if user has access to this organization
-        const membership = await auth.api.getUserOrganization({
+        const membership = await auth.api.getFullOrganization({
           userId: ctx.user.id,
           organizationSlug: input.slug,
         })
 
         if (!membership) {
           throw new ORPCError({
-            code: 'FORBIDDEN',
+            code: 403,
             message: 'You do not have access to this organization',
           })
         }
@@ -87,7 +87,7 @@ export const authProcedures = router({
       } catch (error) {
         console.error('Error fetching organization:', error)
         throw new ORPCError({
-          code: 'NOT_FOUND',
+          code: 404,
           message: 'Organization not found or access denied',
         })
       }
@@ -99,14 +99,14 @@ export const authProcedures = router({
     .mutation(async ({ input, ctx }) => {
       try {
         // Verify user has admin or owner role in the organization
-        const membership = await auth.api.getUserOrganization({
+        const membership = await auth.api.getFullOrganization({
           userId: ctx.user.id,
           organizationId: input.organizationId,
         })
 
         if (!membership || !['owner', 'admin'].includes(membership.member.role)) {
           throw new ORPCError({
-            code: 'FORBIDDEN',
+            code: 403,
             message: 'You do not have permission to invite members to this organization',
           })
         }
@@ -122,7 +122,7 @@ export const authProcedures = router({
       } catch (error) {
         console.error('Error inviting member:', error)
         throw new ORPCError({
-          code: 'BAD_REQUEST',
+          code: 400,
           message: error instanceof Error ? error.message : 'Failed to invite member',
         })
       }
@@ -134,14 +134,14 @@ export const authProcedures = router({
     .query(async ({ input, ctx }) => {
       try {
         // Verify user has access to this organization
-        const membership = await auth.api.getUserOrganization({
+        const membership = await auth.api.getFullOrganization({
           userId: ctx.user.id,
           organizationId: input.organizationId,
         })
 
         if (!membership) {
           throw new ORPCError({
-            code: 'FORBIDDEN',
+            code: 403,
             message: 'You do not have access to this organization',
           })
         }
@@ -154,7 +154,7 @@ export const authProcedures = router({
       } catch (error) {
         console.error('Error fetching organization members:', error)
         throw new ORPCError({
-          code: 'BAD_REQUEST',
+          code: 400,
           message: 'Failed to fetch organization members',
         })
       }

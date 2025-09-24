@@ -3,8 +3,8 @@
     "module": "index.ts",
     "type": "module",
     "version": "0.1.0",
-    "description": "MCPlatform Server SDK for MCP server integration",
-    "keywords": ["mcp", "server", "sdk", "mcplatform"],
+    "description": "mcp-obs Server SDK for MCP server integration",
+    "keywords": ["mcp", "server", "sdk", "mcp-obs"],
     "dependencies": {
         "database": "workspace:*",
         "zod": "^3.25.50"

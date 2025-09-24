@@ -225,7 +225,7 @@ export function SignUpForm() {
                   className="rounded-l-none"
                 />
                 <span className="inline-flex items-center px-3 text-sm text-gray-500 bg-gray-50 border border-l-0 border-gray-300 rounded-r-md">
-                  .mcplatform.com
+                  .mcp-obs.com
                 </span>
               </div>
               {form.formState.errors.organizationSlug && (

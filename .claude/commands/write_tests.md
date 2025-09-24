@@ -1,4 +1,4 @@
-# write_tests.md - MCPlatform Testing Guide
+# write_tests.md - mcp-obs Testing Guide
 
 You are tasked with writing tests for the referenced feature, code defined by an implementation plan, or referenced file(s).
 

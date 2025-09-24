@@ -2,8 +2,8 @@ import { Suspense } from 'react'
 import { SignUpForm } from '@/components/auth/sign-up-form'
 
 export const metadata = {
-  title: 'Sign Up | MCPlatform',
-  description: 'Create your MCPlatform account',
+  title: 'Sign Up | mcp-obs',
+  description: 'Create your mcp-obs account',
 }
 
 export default function SignUpPage() {
@@ -11,7 +11,7 @@ export default function SignUpPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">MCPlatform</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">mcp-obs</h1>
           <p className="text-gray-600">Authentication and observability for MCP servers</p>
         </div>
 

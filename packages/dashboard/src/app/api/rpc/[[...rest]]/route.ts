@@ -1,7 +1,7 @@
-import { createORPCHandler } from '@orpc/next'
+import { createNextHandler } from '@orpc/next'
 import { appRouter } from '@/lib/orpc'
 
-const handler = createORPCHandler({
+const handler = createNextHandler({
   router: appRouter,
 })
 

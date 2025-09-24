@@ -1,6 +1,6 @@
 # Authentication Structure
 
-This directory contains all authentication-related configurations, utilities, and types for the MCPlatform dashboard.
+This directory contains all authentication-related configurations, utilities, and types for the mcp-obs dashboard.
 
 ## Structure
 

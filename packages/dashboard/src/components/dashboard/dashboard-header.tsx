@@ -85,7 +85,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold text-gray-900">MCPlatform</h1>
+            <h1 className="text-2xl font-bold text-gray-900">mcp-obs1>
 
             {!isLoading && organizations.length > 0 && (
               <OrganizationSwitcher

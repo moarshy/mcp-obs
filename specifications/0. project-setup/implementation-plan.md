@@ -16,7 +16,7 @@ type: implementation_strategy
 
 ## Overview
 
-Create the complete technical scaffolding for MCPlatform, including monorepo structure with Next.js 15 dashboard, SDK packages, database package, and SST configuration for AWS deployment. This is pure project scaffolding - no feature implementation, just the foundation structure.
+Create the complete technical scaffolding for mcp-obs, including monorepo structure with Next.js 15 dashboard, SDK packages, database package, and SST configuration for AWS deployment. This is pure project scaffolding - no feature implementation, just the foundation structure.
 
 ## Current State Analysis
 

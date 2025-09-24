@@ -20,7 +20,7 @@ When invoked:
    git log --oneline -n 20
    git diff HEAD~N..HEAD  # Where N covers implementation commits
 
-   # Run MCPlatform checks
+   # Run mcp-obs checks
    cd packages/dashboard && bun lint
    cd packages/dashboard && bun run build
    ```
@@ -62,7 +62,7 @@ If starting fresh or need more context:
    Task 4 - Verify React 19 patterns:
    Check if async server components and promise patterns were implemented correctly.
    Look for: page.tsx with async functions, promises passed to client components
-   Return: Architecture conformance to MCPlatform patterns
+   Return: Architecture conformance to mcp-obs patterns
    ```
 
 ### Step 2: Systematic Validation
@@ -75,7 +75,7 @@ For each phase in the implementation plan document
 
 2. **Run automated verification**:
    - Execute each command from "Automated Verification" section
-   - Use MCPlatform specific tools:
+   - Use mcp-obs specific tools:
      ```bash
      bun run tests
      ```
@@ -88,7 +88,7 @@ For each phase in the implementation plan document
    - Verify authentication patterns (platform vs sub-tenant)
    - use playwright MCP to test user interface features & interactions.
 
-4. **Think deeply about MCPlatform patterns**:
+4. **Think deeply about mcp-obs patterns**:
    - Are oRPC actions properly wrapped with .actionable({})?
    - Do server components, server actions and RPCs use requireSession() for auth?
    - Are all database queries scoped to organizations?
@@ -126,7 +126,7 @@ Create comprehensive validation summary:
 - Added extra validation in [file:line] (improvement)
 - Skipped intermediate step in favor of more direct approach
 
-#### MCPlatform Pattern Compliance:
+#### mcp-obs Pattern Compliance:
 ✅ Server components are async and use requireSession()
 ✅ Client components use 'use client' and use() hook properly
 ✅ oRPC actions include revalidatePath calls
@@ -182,9 +182,9 @@ If you were part of the implementation:
 - Be honest about any shortcuts or incomplete items
 - Note any decisions that deviated from the plan and why
 
-## MCPlatform-Specific Checks
+## mcp-obs-Specific Checks
 
-Always verify MCPlatform patterns:
+Always verify mcp-obs patterns:
 
 ### Database Layer (Drizzle ORM)
 - [ ] Schema changes in `packages/database/src/schema.ts`
@@ -227,7 +227,7 @@ Always verify:
 - [ ] All phases marked complete are actually done
 - [ ] Biome checks pass without errors
 - [ ] Build succeeds (dry-run only)
-- [ ] Code follows MCPlatform patterns
+- [ ] Code follows mcp-obs patterns
 - [ ] No regressions in existing functionality
 - [ ] Organization isolation maintained
 - [ ] Error handling is robust
@@ -261,4 +261,4 @@ Always verify:
 - Wrong auth system used for context
 
 ## Addenda:
-Remember: Good validation catches issues before they reach users. Be constructive but thorough in identifying gaps or improvements that align with MCPlatform's patterns and quality standards.
+Remember: Good validation catches issues before they reach users. Be constructive but thorough in identifying gaps or improvements that align with mcp-obs's patterns and quality standards.

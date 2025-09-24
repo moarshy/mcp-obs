@@ -1,4 +1,4 @@
-# MCPlatform
+# mcp-obs
 
 Observability and management platform for MCP (Model Context Protocol) servers.
 
@@ -11,8 +11,8 @@ mcp-obs/
 ├── packages/
 │   ├── dashboard/           # Next.js 15 dashboard application
 │   ├── database/            # Shared database schemas and utilities
-│   ├── server-sdk/          # MCPlatform Server SDK
-│   └── client-sdk/          # MCPlatform Client SDK
+│   ├── server-sdk/          # mcp-obs Server SDK
+│   └── client-sdk/          # mcp-obs Client SDK
 ├── docs/                    # Project documentation
 ├── specifications/          # Feature specifications
 └── sst.config.ts           # AWS infrastructure configuration
@@ -44,7 +44,7 @@ mcp-obs/
 3. **Set up PostgreSQL database:**
    ```bash
    # Create database
-   createdb mcplatform_dev
+   createdb mcp_obs_dev
 
    # Run migrations (after setting DATABASE_URL)
    bun run db:generate
@@ -119,12 +119,12 @@ bun run deploy:remove
 - **Exports:** Schema definitions and database utilities
 
 ### Server SDK (`packages/server-sdk`)
-- **Purpose:** SDK for MCP servers to integrate with MCPlatform
-- **Exports:** `MCPlatformSDK` class and related types
+- **Purpose:** SDK for MCP servers to integrate with mcp-obs
+- **Exports:** `McpObsSDK` class and related types
 
 ### Client SDK (`packages/client-sdk`)
 - **Purpose:** SDK for frontend applications
-- **Exports:** `MCPlatformClient` class and related types
+- **Exports:** `McpObsClient` class and related types
 
 ## AWS Deployment
 
@@ -199,7 +199,7 @@ Your app will be accessible via `https://your-domain.ngrok-free.app` for externa
 
 ## Project Status
 
-This is the **foundation scaffolding** for MCPlatform. The basic structure is complete and ready for feature development.
+This is the **foundation scaffolding** for mcp-obs. The basic structure is complete and ready for feature development.
 
 ### ✅ Completed
 - [x] Monorepo structure with Bun workspace

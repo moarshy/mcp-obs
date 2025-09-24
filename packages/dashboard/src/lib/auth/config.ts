@@ -49,7 +49,7 @@ export const auth = betterAuth({
   advanced: {
     crossSubDomainCookies: {
       enabled: true,
-      domain: process.env.NODE_ENV === 'production' ? '.mcplatform.com' : 'localhost',
+      domain: process.env.NODE_ENV === 'production' ? '.mcp-obs.com' : 'localhost',
     },
   },
 })

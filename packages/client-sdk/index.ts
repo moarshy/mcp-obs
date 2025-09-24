@@ -1,8 +1,8 @@
 /**
- * MCPlatform Client SDK
+ * mcp-obs Client SDK
  *
  * This SDK provides utilities for frontend applications to interact with
- * MCPlatform APIs and services.
+ * mcp-obs APIs and services.
  */
 
 export interface MCPClientConfig {
@@ -11,7 +11,7 @@ export interface MCPClientConfig {
   apiKey?: string
 }
 
-export class MCPlatformClient {
+export class McpObsClient {
   private config: MCPClientConfig
 
   constructor(config: MCPClientConfig) {
@@ -51,4 +51,4 @@ export class MCPlatformClient {
 }
 
 // Export main client class and types
-export default MCPlatformClient
+export default McpObsClient

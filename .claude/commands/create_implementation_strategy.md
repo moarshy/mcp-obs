@@ -336,7 +336,7 @@ Before finalizing:
 - [ ] File paths and references are accurate
 - [ ] Success criteria match requirements
 
-## Common MCPlatform Patterns
+## Common mcp-obs Patterns
 
 ### Database Operations
 - Always use Drizzle ORM TypeScript schemas

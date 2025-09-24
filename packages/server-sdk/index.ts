@@ -1,7 +1,7 @@
 /**
- * MCPlatform Server SDK
+ * mcp-obs Server SDK
  *
- * This SDK provides utilities for MCP servers to integrate with MCPlatform
+ * This SDK provides utilities for MCP servers to integrate with mcp-obs
  * for observability, analytics, and management.
  */
 
@@ -12,7 +12,7 @@ export interface MCPServerConfig {
   apiKey?: string
 }
 
-export class MCPlatformSDK {
+export class McpObsSDK {
   private config: MCPServerConfig
 
   constructor(config: MCPServerConfig) {
@@ -20,15 +20,15 @@ export class MCPlatformSDK {
   }
 
   /**
-   * Initialize the SDK connection to MCPlatform
+   * Initialize the SDK connection to mcp-obs
    */
   async initialize(): Promise<void> {
     // SDK initialization logic will be implemented here
-    console.log(`MCPlatform SDK initialized for server: ${this.config.serverName}`)
+    console.log(`mcp-obs SDK initialized for server: ${this.config.serverName}`)
   }
 
   /**
-   * Report server status to MCPlatform
+   * Report server status to mcp-obs
    */
   async reportStatus(status: 'healthy' | 'degraded' | 'down'): Promise<void> {
     // Status reporting logic will be implemented here
@@ -45,4 +45,4 @@ export class MCPlatformSDK {
 }
 
 // Export main SDK class and types
-export default MCPlatformSDK
+export default McpObsSDK

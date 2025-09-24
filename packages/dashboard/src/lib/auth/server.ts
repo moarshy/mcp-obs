@@ -37,7 +37,7 @@ export const requireAuth = async () => {
 // Get user organizations on server
 export const getUserOrganizations = async (userId: string) => {
   try {
-    const organizations = await auth.api.listUserOrganizations({
+    const organizations = await auth.api.listOrganizations({
       userId,
     })
 
@@ -51,7 +51,7 @@ export const getUserOrganizations = async (userId: string) => {
 // Check user organization membership
 export const checkOrganizationMembership = async (userId: string, organizationSlug: string) => {
   try {
-    const membership = await auth.api.getUserOrganization({
+    const membership = await auth.api.getFullOrganization({
       userId,
       organizationSlug,
     })

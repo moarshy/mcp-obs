@@ -17,7 +17,7 @@ const BETTER_AUTH_SECRET = requireEnv('BETTER_AUTH_SECRET')
 const NEXT_PUBLIC_BETTER_AUTH_URL = requireEnv('NEXT_PUBLIC_BETTER_AUTH_URL')
 
 // Domain configuration
-const DOMAIN_NAME = process.env.DOMAIN_NAME || 'mcplatform.com'
+const DOMAIN_NAME = process.env.DOMAIN_NAME || 'mcp-obs.com'
 
 // Ngrok configuration for development
 const NGROK_STATIC_URL = process.env.NGROK_STATIC_URL
@@ -25,7 +25,7 @@ const NGROK_STATIC_URL = process.env.NGROK_STATIC_URL
 export default $config({
     app(input) {
         return {
-            name: 'mcplatform',
+            name: 'mcp-obs',
             removal: input?.stage === 'production' ? 'retain' : 'remove',
             protect: ['production'].includes(input?.stage),
             home: 'aws'
@@ -42,7 +42,7 @@ export default $config({
         // PostgreSQL database for the application
         const postgres = new sst.aws.Postgres(`Postgres`, {
             vpc,
-            database: 'mcplatform',
+            database: 'mcp_obs',
             proxy: false
         })
 

@@ -16,7 +16,7 @@ type: implementation_strategy
 
 ## Overview
 
-Implementing a complete platform authentication system using Better Auth with multi-organization support for MCPlatform customers. This system enables customer sign-up, organization management, team collaboration, and protected dashboard access with the Doom 64 dark theme aesthetic.
+Implementing a complete platform authentication system using Better Auth with multi-organization support for mcp-obs customers. This system enables customer sign-up, organization management, team collaboration, and protected dashboard access with the Doom 64 dark theme aesthetic.
 
 ## Current State Analysis
 

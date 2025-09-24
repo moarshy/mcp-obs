@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    optimizePackageImports: ['@mcplatform/database'],
+    optimizePackageImports: ['@mcp-obs/database'],
   },
-  transpilePackages: ['@mcplatform/database', '@mcplatform/server-sdk', '@mcplatform/client-sdk'],
+  transpilePackages: ['@mcp-obs/database', '@mcp-obs/server-sdk', '@mcp-obs/client-sdk'],
   typescript: {
     ignoreBuildErrors: false,
   },
