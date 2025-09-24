@@ -1,21 +1,22 @@
 'use client'
 
 import { createORPCClient } from '@orpc/client'
-import { createORPCQueryUtils, createORPCHooks } from '@orpc/next/react'
 
 // Create the base oRPC client
 export const orpcClient = createORPCClient({
   url: '/api/rpc',
 })
 
-// Create React hooks for oRPC
-export const orpcHooks = createORPCHooks({
-  client: orpcClient,
-})
-
-export const orpcUtils = createORPCQueryUtils({
-  client: orpcClient,
-})
-
-// Export commonly used hooks
-export const { useQuery, useMutation, useSuspenseQuery } = orpcHooks
+// TODO: Add React hooks when oRPC Next.js integration is properly set up
+// For now, export a simple client interface
+export const orpc = {
+  auth: {
+    getMe: () => fetch('/api/rpc/auth/getMe').then(r => r.json()),
+    createOrganization: (data: any) =>
+      fetch('/api/rpc/auth/createOrganization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }).then(r => r.json()),
+  }
+}

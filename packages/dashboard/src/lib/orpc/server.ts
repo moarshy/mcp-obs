@@ -1,6 +1,4 @@
-import { ORPCError } from '@orpc/server'
-import { procedure } from '@orpc/server/procedure'
-import { router } from '@orpc/server/router'
+import { ORPCError, procedure, router } from '@orpc/server'
 import { db } from 'database'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'

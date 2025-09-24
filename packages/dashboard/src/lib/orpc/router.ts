@@ -1,4 +1,4 @@
-import { router } from '@orpc/server/router'
+import { router } from '@orpc/server'
 import { authProcedures } from './procedures/auth'
 
 // Create main router with all procedures

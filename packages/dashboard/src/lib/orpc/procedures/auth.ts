@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { router } from '@orpc/server/router'
+import { router } from '@orpc/server'
 import { protectedProcedure, publicProcedure } from '../server'
 import { auth } from '@/lib/auth'
 import { ORPCError } from '@orpc/server'

@@ -22,6 +22,9 @@ const DOMAIN_NAME = process.env.DOMAIN_NAME || 'mcp-obs.com'
 // Ngrok configuration for development
 const NGROK_STATIC_URL = process.env.NGROK_STATIC_URL
 
+// AWS Region configuration
+const AWS_REGION = process.env.AWS_REGION || 'us-east-1'
+
 export default $config({
     app(input) {
         return {
@@ -91,7 +94,7 @@ export default $config({
         // Next.js application
         const nextApp = new sst.aws.Nextjs('Dashboard', {
             path: './packages/dashboard',
-            regions: ['us-east-1'],
+            regions: [AWS_REGION],
             domain: {
                 name: domainName,
                 dns: sst.aws.dns(),

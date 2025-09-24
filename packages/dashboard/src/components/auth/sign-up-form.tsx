@@ -17,10 +17,6 @@ const signUpSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string().min(1, 'Please confirm your password'),
-  organizationName: z.string().min(2, 'Organization name must be at least 2 characters'),
-  organizationSlug: z.string()
-    .min(2, 'Organization slug must be at least 2 characters')
-    .regex(/^[a-z0-9-]+$/, 'Organization slug can only contain lowercase letters, numbers, and hyphens'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -40,24 +36,8 @@ export function SignUpForm() {
       email: '',
       password: '',
       confirmPassword: '',
-      organizationName: '',
-      organizationSlug: '',
     },
   })
-
-  // Auto-generate slug from organization name
-  const handleOrganizationNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const name = e.target.value
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-
-    form.setValue('organizationName', name)
-    form.setValue('organizationSlug', slug)
-  }
 
   const onSubmit = async (data: SignUpFormData) => {
     try {
@@ -75,30 +55,9 @@ export function SignUpForm() {
         return
       }
 
-      // Create organization after successful signup
-      try {
-        const response = await fetch('/api/rpc', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            method: 'auth.createOrganization',
-            params: {
-              name: data.organizationName,
-              slug: data.organizationSlug,
-            },
-          }),
-        })
-
-        if (!response.ok) {
-          throw new Error('Failed to create organization')
-        }
-
-        // Redirect to dashboard
-        router.push('/dashboard')
-        router.refresh()
-      } catch (orgError) {
-        setError('Account created but failed to create organization. Please contact support.')
-      }
+      // Redirect to onboarding where user can create organization
+      router.push('/dashboard/onboarding')
+      router.refresh()
     } catch (err) {
       setError('An unexpected error occurred')
     } finally {
@@ -126,7 +85,7 @@ export function SignUpForm() {
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold text-center">Sign Up</CardTitle>
         <CardDescription className="text-center">
-          Create your account and organization
+          Create your account
         </CardDescription>
       </CardHeader>
 
@@ -192,47 +151,6 @@ export function SignUpForm() {
             )}
           </div>
 
-          <div className="border-t pt-4 space-y-4">
-            <h3 className="font-medium text-sm text-gray-900">Organization Details</h3>
-
-            <div className="space-y-2">
-              <Label htmlFor="organizationName">Organization Name</Label>
-              <Input
-                id="organizationName"
-                type="text"
-                placeholder="Acme Inc"
-                {...form.register('organizationName')}
-                onChange={handleOrganizationNameChange}
-                disabled={isLoading}
-              />
-              {form.formState.errors.organizationName && (
-                <p className="text-sm text-red-600">{form.formState.errors.organizationName.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="organizationSlug">Organization Slug</Label>
-              <div className="flex">
-                <span className="inline-flex items-center px-3 text-sm text-gray-500 bg-gray-50 border border-r-0 border-gray-300 rounded-l-md">
-                  https://
-                </span>
-                <Input
-                  id="organizationSlug"
-                  type="text"
-                  placeholder="acme-inc"
-                  {...form.register('organizationSlug')}
-                  disabled={isLoading}
-                  className="rounded-l-none"
-                />
-                <span className="inline-flex items-center px-3 text-sm text-gray-500 bg-gray-50 border border-l-0 border-gray-300 rounded-r-md">
-                  .mcp-obs.com
-                </span>
-              </div>
-              {form.formState.errors.organizationSlug && (
-                <p className="text-sm text-red-600">{form.formState.errors.organizationSlug.message}</p>
-              )}
-            </div>
-          </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

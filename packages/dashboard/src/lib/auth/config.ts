@@ -1,28 +1,39 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { organization } from 'better-auth/plugins'
-import { db } from 'database'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
+import {
+  db,
+  user,
+  session,
+  account,
+  verification,
+  invitation,
+  member,
+  organization as organizationTable,
+  oauthApplication,
+  oauthAccessToken,
+  oauthConsent
+} from 'database'
+import { eq } from 'drizzle-orm'
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: 'pg',
+    schema: {
+      user,
+      session,
+      account,
+      verification,
+      invitation,
+      member,
+      organization: organizationTable,
+      oauthApplication,
+      oauthAccessToken,
+      oauthConsent
+    }
   }),
-  emailAndPassword: {
-    enabled: true,
-    requireEmailVerification: false, // Disabled for development as specified
-  },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-      enabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
-    },
-    github: {
-      clientId: process.env.GITHUB_CLIENT_ID || '',
-      clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
-      enabled: !!(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET),
-    },
-  },
   plugins: [
     organization({
       async sendInvitationEmail(data) {
@@ -34,24 +45,72 @@ export const auth = betterAuth({
       memberLimit: 100, // Max members per organization
     })
   ],
-  trustedOrigins: [
-    process.env.BETTER_AUTH_URL || 'http://localhost:3000',
-    'http://localhost:3000', // Always allow localhost for development
-  ],
-  session: {
-    cookieCache: {
-      enabled: true,
-      maxAge: 5 * 60, // 5 minutes cache
-    },
-    expiresIn: 60 * 60 * 24 * 7, // 1 week
-    updateAge: 60 * 60 * 24, // 1 day - update session daily
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false, // Disabled for development as specified
   },
-  advanced: {
-    crossSubDomainCookies: {
-      enabled: true,
-      domain: process.env.NODE_ENV === 'production' ? '.mcp-obs.com' : 'localhost',
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID as string,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+    },
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     },
   },
 })
+
+// Type definitions for Better Auth session with organization context
+type BaseSession = typeof auth.$Infer.Session
+type SessionWithRequiredOrg = BaseSession & {
+  session: BaseSession['session'] & {
+    activeOrganizationId: string
+  }
+}
+
+// Type-safe overloaded function for session handling
+interface GetSessionOverloads {
+  (): Promise<SessionWithRequiredOrg>
+  (params: { data: { organizationRequired: boolean } }): Promise<BaseSession>
+  (params?: { data?: { organizationRequired?: true } }): Promise<SessionWithRequiredOrg>
+}
+
+const sessionHelper = async (
+  data: {
+    organizationRequired: boolean
+  } = {
+    organizationRequired: true
+  }
+) => {
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
+
+  if (!session || !session.user) {
+    redirect('/auth/signin')
+  }
+
+  if (data.organizationRequired && !session.session.activeOrganizationId) {
+    const memberships = await db.select().from(member).where(eq(member.userId, session.user.id))
+
+    if (memberships.length === 0) {
+      redirect('/dashboard/onboarding?reason=no-organization')
+    }
+
+    // If user has organizations but no active one, set the first as active
+    if (memberships.length === 1) {
+      // User has exactly one organization, allow access
+      // In a full implementation, you'd set the activeOrganizationId in the session
+    } else {
+      // Multiple organizations - let user choose
+      redirect('/dashboard/organizations')
+    }
+  }
+
+  return session
+}
+
+export const requireSession = sessionHelper as GetSessionOverloads
 
 export type Session = typeof auth.$Infer.Session
