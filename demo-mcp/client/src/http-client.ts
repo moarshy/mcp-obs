@@ -1,22 +1,20 @@
 #!/usr/bin/env node
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { FetchTransport } from "@modelcontextprotocol/sdk/client/fetch.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
 interface EchoArgs {
   message?: string;
 }
 
 async function runHttpClient() {
-  console.log("=== Running MCP Client with HTTP transport ===");
+  console.log("=== Running MCP Client with SSE transport ===");
 
   // Note: This requires an HTTP MCP server to be running
   // For demo purposes, we'll show the setup but it won't connect without a server
-  const serverUrl = "http://localhost:3001/mcp";
+  const serverUrl = "http://localhost:3003/sse";
 
-  const transport = new FetchTransport({
-    url: serverUrl,
-  });
+  const transport = new SSEClientTransport(new URL(serverUrl));
 
   const client = new Client(
     {
@@ -29,11 +27,11 @@ async function runHttpClient() {
   );
 
   try {
-    console.log(`🌐 Attempting to connect to HTTP server at ${serverUrl}`);
+    console.log(`🌐 Attempting to connect to SSE server at ${serverUrl}`);
 
     // This will fail if no HTTP server is running, which is expected for this demo
     await client.connect(transport);
-    console.log("✅ Connected to MCP server via HTTP");
+    console.log("✅ Connected to MCP server via SSE");
 
     // List available tools
     const tools = await client.listTools();
@@ -44,17 +42,17 @@ async function runHttpClient() {
     const result = await client.callTool({
       name: "echo",
       arguments: {
-        message: "HTTP Transport Demo!",
+        message: "SSE Transport Demo!",
       } as EchoArgs,
     });
     console.log("📤 Result:", result.content[0]);
 
   } catch (error) {
-    console.log("ℹ️ HTTP server not available (this is expected for stdio demo)");
-    console.log("   To test HTTP transport, implement an HTTP MCP server");
+    console.log("ℹ️ SSE server not available (expected - start with 'bun run dev:server:http')");
+    console.log("   Error:", error.message);
   } finally {
     await client.close();
-    console.log("🔌 Disconnected from HTTP server");
+    console.log("🔌 Disconnected from SSE server");
   }
 }
 

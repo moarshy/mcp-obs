@@ -1,10 +1,14 @@
 {
   "mcpServers": {
-    "demo-mcp-obs": {
+    "demo-mcp-obs-stdio": {
       "command": "/Users/arshath/play/naptha/mcp-obs/demo-mcp/node_modules/.bin/tsx",
       "args": ["/Users/arshath/play/naptha/mcp-obs/demo-mcp/server/src/index.ts"],
       "cwd": "/Users/arshath/play/naptha/mcp-obs/demo-mcp",
-      "description": "Demo MCP server with echo tool that responds 'hello from mcp-obs'"
+      "description": "Demo MCP server (stdio) with echo tool that responds 'hello from mcp-obs'"
+    },
+    "demo-mcp-obs-sse": {
+      "url": "http://localhost:3003/sse",
+      "description": "Demo MCP server (SSE) with echo tool that responds 'hello from mcp-obs (HTTP)'"
     }
   }
 }

@@ -14,7 +14,7 @@ interface EchoArgs {
 }
 
 const app = express();
-const PORT = 3001;
+const PORT = 3003;
 
 // Middleware
 app.use(cors());
@@ -71,12 +71,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   throw new Error(`Unknown tool: ${request.params.name}`);
 });
 
-// SSE endpoint for MCP
-app.get("/mcp", async (req, res) => {
+// Store transports for each session
+const transports: Record<string, SSEServerTransport> = {};
+
+// SSE endpoint - establishes connection
+app.get("/sse", async (req, res) => {
   console.log("📡 New SSE connection established");
 
-  const transport = new SSEServerTransport("/mcp", res);
+  const transport = new SSEServerTransport("/messages", res);
+  transports[transport.sessionId] = transport;
+
+  // Clean up transport when connection closes
+  res.on("close", () => {
+    console.log(`🔌 SSE connection closed for session ${transport.sessionId}`);
+    delete transports[transport.sessionId];
+  });
+
   await server.connect(transport);
+});
+
+// Message endpoint - handles POST requests
+app.post("/messages", async (req, res) => {
+  const sessionId = req.query.sessionId as string;
+  console.log(`📨 POST request for session ${sessionId}`);
+
+  const transport = transports[sessionId];
+
+  if (transport) {
+    await transport.handlePostMessage(req, res, req.body);
+  } else {
+    console.error(`❌ No transport found for sessionId: ${sessionId}`);
+    res.status(400).send('No transport found for sessionId');
+  }
 });
 
 // Health check endpoint
@@ -87,8 +113,9 @@ app.get("/health", (req, res) => {
 async function main() {
   app.listen(PORT, () => {
     console.log(`🌐 Demo MCP HTTP Server running on http://localhost:${PORT}`);
-    console.log(`📡 MCP endpoint available at http://localhost:${PORT}/mcp`);
-    console.log(`🔍 Health check at http://localhost:${PORT}/health`);
+    console.log(`📡 SSE endpoint: http://localhost:${PORT}/sse`);
+    console.log(`📨 Messages endpoint: http://localhost:${PORT}/messages`);
+    console.log(`🔍 Health check: http://localhost:${PORT}/health`);
   });
 }
 

@@ -2,7 +2,6 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -19,15 +18,10 @@ async function runStdioClient() {
   // Get the path to the server script
   const serverPath = path.resolve(__dirname, "../../server/src/index.ts");
 
-  // Spawn the server process
-  const serverProcess = spawn("tsx", [serverPath], {
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-
-  // Create transport using the server process
+  // Create transport - let StdioClientTransport handle the process spawning
   const transport = new StdioClientTransport({
-    reader: serverProcess.stdout,
-    writer: serverProcess.stdin,
+    command: "tsx",
+    args: [serverPath],
   });
 
   const client = new Client(
@@ -72,7 +66,6 @@ async function runStdioClient() {
   } finally {
     // Clean up
     await client.close();
-    serverProcess.kill();
     console.log("🔌 Disconnected from MCP server");
   }
 }
