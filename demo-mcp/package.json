@@ -7,14 +7,17 @@
     "build": "tsc --build server client",
     "dev:server": "tsx server/src/index.ts",
     "dev:server:http": "tsx server/src/http-server.ts",
+    "dev:server:streamable": "tsx server/src/streamable-http-server.ts",
     "dev:client": "tsx client/src/index.ts",
     "dev:client:http": "tsx client/src/http-client.ts",
+    "dev:client:streamable": "tsx client/src/streamable-http-client.ts",
     "start:server": "node server/dist/index.js",
     "start:server:http": "node server/dist/http-server.js",
     "start:client": "node client/dist/index.js",
     "start:client:http": "node client/dist/http-client.js",
     "demo": "npm run dev:client",
-    "demo:http": "npm run dev:client:http"
+    "demo:http": "npm run dev:client:http",
+    "demo:streamable": "npm run dev:client:streamable"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1",
