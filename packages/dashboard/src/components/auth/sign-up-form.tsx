@@ -91,7 +91,7 @@ export function SignUpForm() {
 
       <CardContent className="space-y-4">
         {error && (
-          <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+          <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive rounded-md">
             {error}
           </div>
         )}
@@ -107,7 +107,7 @@ export function SignUpForm() {
               disabled={isLoading}
             />
             {form.formState.errors.name && (
-              <p className="text-sm text-red-600">{form.formState.errors.name.message}</p>
+              <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
             )}
           </div>
 
@@ -121,7 +121,7 @@ export function SignUpForm() {
               disabled={isLoading}
             />
             {form.formState.errors.email && (
-              <p className="text-sm text-red-600">{form.formState.errors.email.message}</p>
+              <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
             )}
           </div>
 
@@ -134,7 +134,7 @@ export function SignUpForm() {
               disabled={isLoading}
             />
             {form.formState.errors.password && (
-              <p className="text-sm text-red-600">{form.formState.errors.password.message}</p>
+              <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
             )}
           </div>
 
@@ -147,7 +147,7 @@ export function SignUpForm() {
               disabled={isLoading}
             />
             {form.formState.errors.confirmPassword && (
-              <p className="text-sm text-red-600">{form.formState.errors.confirmPassword.message}</p>
+              <p className="text-sm text-destructive">{form.formState.errors.confirmPassword.message}</p>
             )}
           </div>
 
@@ -160,10 +160,10 @@ export function SignUpForm() {
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300" />
+            <div className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with</span>
+            <span className="px-2 bg-card text-muted-foreground">Or continue with</span>
           </div>
         </div>
 
@@ -198,9 +198,9 @@ export function SignUpForm() {
       </CardContent>
 
       <CardFooter className="text-center">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Already have an account?{' '}
-          <a href="/auth/signin" className="text-blue-600 hover:underline">
+          <a href="/auth/signin" className="text-primary hover:underline">
             Sign in
           </a>
         </p>

@@ -89,7 +89,7 @@ export function SignInForm() {
 
       <CardContent className="space-y-4">
         {error && (
-          <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+          <div className="p-3 text-sm text-destructive bg-destructive/10 border border-destructive rounded-md">
             {error}
           </div>
         )}
@@ -105,7 +105,7 @@ export function SignInForm() {
               disabled={isLoading}
             />
             {form.formState.errors.email && (
-              <p className="text-sm text-red-600">{form.formState.errors.email.message}</p>
+              <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
             )}
           </div>
 
@@ -118,7 +118,7 @@ export function SignInForm() {
               disabled={isLoading}
             />
             {form.formState.errors.password && (
-              <p className="text-sm text-red-600">{form.formState.errors.password.message}</p>
+              <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
             )}
           </div>
 
@@ -128,7 +128,7 @@ export function SignInForm() {
               type="checkbox"
               {...form.register('rememberMe')}
               disabled={isLoading}
-              className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="h-4 w-4 text-primary border-input bg-background rounded focus:ring-ring"
             />
             <Label htmlFor="rememberMe" className="text-sm">
               Remember me
@@ -143,10 +143,10 @@ export function SignInForm() {
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300" />
+            <div className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with</span>
+            <span className="px-2 bg-card text-muted-foreground">Or continue with</span>
           </div>
         </div>
 
@@ -181,9 +181,9 @@ export function SignInForm() {
       </CardContent>
 
       <CardFooter className="text-center">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Don't have an account?{' '}
-          <a href="/auth/signup" className="text-blue-600 hover:underline">
+          <a href="/auth/signup" className="text-primary hover:underline">
             Sign up
           </a>
         </p>

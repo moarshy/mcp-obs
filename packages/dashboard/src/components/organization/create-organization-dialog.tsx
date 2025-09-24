@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { nanoid } from 'nanoid'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,6 +20,33 @@ const createOrganizationSchema = z.object({
 })
 
 type CreateOrganizationFormData = z.infer<typeof createOrganizationSchema>
+
+// Enhanced slugify function from OrganizationForm
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single
+    .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+}
+
+// Check slug availability
+async function checkSlugAvailability(slug: string): Promise<boolean> {
+  try {
+    const response = await fetch('/api/organizations/check-slug', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug })
+    })
+    const data = await response.json()
+    return data.available
+  } catch (error) {
+    console.error('Error checking slug availability:', error)
+    return false
+  }
+}
 
 interface Organization {
   id: string
@@ -40,6 +68,7 @@ export function CreateOrganizationDialog({
 }: CreateOrganizationDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [slugStatus, setSlugStatus] = useState<'checking' | 'available' | 'taken' | 'idle'>('idle')
 
   const form = useForm<CreateOrganizationFormData>({
     resolver: zodResolver(createOrganizationSchema),
@@ -51,20 +80,77 @@ export function CreateOrganizationDialog({
   })
 
   // Auto-generate slug from organization name
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const name = e.target.value
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
+  useEffect(() => {
+    const name = form.watch('name')
+    const currentSlug = form.watch('slug')
 
-    form.setValue('name', name)
-    form.setValue('slug', slug)
+    if (name && !currentSlug) {
+      const suggestedSlug = slugify(name)
+      if (suggestedSlug) {
+        form.setValue('slug', suggestedSlug)
+      }
+    }
+  }, [form.watch('name')])
+
+  // Validate slug availability with debouncing
+  useEffect(() => {
+    const slug = form.watch('slug')
+
+    if (!slug) {
+      setSlugStatus('idle')
+      return
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setSlugStatus('checking')
+      const available = await checkSlugAvailability(slug)
+
+      if (!available) {
+        // Generate alternative with nanoid
+        const alternativeSlug = `${slug}-${nanoid(6).toLowerCase()}`
+        form.setValue('slug', alternativeSlug)
+        setSlugStatus('available')
+      } else {
+        setSlugStatus('available')
+      }
+    }, 500) // Debounce for 500ms
+
+    return () => clearTimeout(timeoutId)
+  }, [form.watch('slug')])
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    form.setValue('name', e.target.value)
+  }
+
+  const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const slugified = slugify(e.target.value)
+    form.setValue('slug', slugified)
+  }
+
+  const getSlugStatusColor = () => {
+    switch (slugStatus) {
+      case 'checking': return 'text-yellow-600'
+      case 'available': return 'text-green-600'
+      case 'taken': return 'text-red-600'
+      default: return 'text-gray-500'
+    }
+  }
+
+  const getSlugStatusText = () => {
+    switch (slugStatus) {
+      case 'checking': return 'Checking availability...'
+      case 'available': return '✓ Available'
+      case 'taken': return '✗ Already taken'
+      default: return 'Unique identifier for your organization'
+    }
   }
 
   const onSubmit = async (data: CreateOrganizationFormData) => {
+    if (slugStatus !== 'available') {
+      setError('Please wait for slug validation to complete')
+      return
+    }
+
     try {
       setIsLoading(true)
       setError(null)
@@ -149,26 +235,18 @@ export function CreateOrganizationDialog({
 
           <div className="space-y-2">
             <Label htmlFor="slug">Organization Slug</Label>
-            <div className="flex">
-              <span className="inline-flex items-center px-3 text-sm text-gray-500 bg-gray-50 border border-r-0 border-gray-300 rounded-l-md">
-                https://
-              </span>
-              <Input
-                id="slug"
-                placeholder="acme-inc"
-                {...form.register('slug')}
-                disabled={isLoading}
-                className="rounded-l-none"
-              />
-              <span className="inline-flex items-center px-3 text-sm text-gray-500 bg-gray-50 border border-l-0 border-gray-300 rounded-r-md">
-                .mcp-obs.com
-              </span>
-            </div>
+            <Input
+              id="slug"
+              placeholder="acme-inc"
+              {...form.register('slug')}
+              onChange={handleSlugChange}
+              disabled={isLoading}
+            />
             {form.formState.errors.slug && (
               <p className="text-sm text-red-600">{form.formState.errors.slug.message}</p>
             )}
-            <p className="text-xs text-gray-500">
-              This will be your organization's subdomain URL for authentication
+            <p className={`text-xs ${getSlugStatusColor()}`}>
+              {getSlugStatusText()}
             </p>
           </div>
 
@@ -189,9 +267,9 @@ export function CreateOrganizationDialog({
             <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || slugStatus !== 'available'}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Organization
+              {slugStatus === 'checking' ? 'Validating...' : 'Create Organization'}
             </Button>
           </DialogFooter>
         </form>

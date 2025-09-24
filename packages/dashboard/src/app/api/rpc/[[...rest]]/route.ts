@@ -1,29 +1,21 @@
-import { appRouter } from '@/lib/orpc'
-import { NextRequest } from 'next/server'
+import { appRouter } from '@/lib/orpc/router'
+import { createORPCHandler } from '@orpc/next'
+import { getServerSession } from '@/lib/auth'
 
-async function handler(request: NextRequest) {
+// Create oRPC context
+const createContext = async () => {
   try {
-    const { pathname, searchParams } = new URL(request.url)
-    const path = pathname.replace('/api/rpc', '') || '/'
-
-    // Extract procedure path from URL
-    const segments = path.split('/').filter(Boolean)
-    const method = request.method.toLowerCase()
-
-    // For now, return a simple response to fix compilation
-    // TODO: Implement proper oRPC handler when we have correct imports
-    return Response.json({
-      error: 'oRPC handler not implemented yet',
-      path: segments,
-      method
-    }, { status: 501 })
+    const { user, session } = await getServerSession()
+    return { user, session }
   } catch (error) {
-    return Response.json({
-      error: 'Internal server error',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return { user: null, session: null }
   }
 }
+
+const handler = createORPCHandler({
+  router: appRouter,
+  createContext,
+})
 
 export { handler as GET, handler as POST }
 export type AppRouter = typeof appRouter

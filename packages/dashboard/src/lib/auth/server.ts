@@ -37,11 +37,23 @@ export const requireAuth = async () => {
 // Get user organizations on server
 export const getUserOrganizations = async (userId: string) => {
   try {
-    const organizations = await auth.api.listOrganizations({
-      userId,
-    })
+    // Import database and schema
+    const { db } = await import('database')
+    const { member, organization } = await import('database')
+    const { eq } = await import('drizzle-orm')
 
-    return organizations || []
+    // Query organizations where user is a member
+    const membershipResults = await db
+      .select({
+        id: organization.id,
+        name: organization.name,
+        slug: organization.slug,
+      })
+      .from(member)
+      .innerJoin(organization, eq(member.organizationId, organization.id))
+      .where(eq(member.userId, userId))
+
+    return membershipResults
   } catch (error) {
     console.error('Error fetching user organizations:', error)
     return []

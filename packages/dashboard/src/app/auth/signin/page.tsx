@@ -8,11 +8,11 @@ export const metadata = {
 
 export default function SignInPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">mcp-obs</h1>
-          <p className="text-gray-600">Authentication and observability for MCP servers</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">mcp-obs</h1>
+          <p className="text-muted-foreground">Authentication and observability for MCP servers</p>
         </div>
 
         <Suspense fallback={<div>Loading...</div>}>
