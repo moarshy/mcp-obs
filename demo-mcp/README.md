@@ -1,13 +1,14 @@
 # Demo MCP - TypeScript Implementation
 
-This is a demonstration of Model Context Protocol (MCP) implementation in TypeScript, featuring both server and client components with support for stdio and HTTP/SSE transports.
+This is a comprehensive demonstration of Model Context Protocol (MCP) implementation in TypeScript, featuring both server and client components with support for three different transport types.
 
 ## Features
 
 - **MCP Server**: Implements an echo tool that responds with "hello from mcp-obs: {message}"
-- **MCP Client**: Can connect via stdio or HTTP transport
-- **Dual Transport Support**: Both stdio (process-based) and HTTP/SSE (network-based)
+- **MCP Client**: Can connect via multiple transports
+- **Triple Transport Support**: stdio, SSE (deprecated), and Streamable HTTP (current standard)
 - **TypeScript**: Full type safety using the official `@modelcontextprotocol/sdk`
+- **Transport Identification**: Each transport clearly identifies itself in responses
 
 ## Project Structure
 
@@ -15,13 +16,15 @@ This is a demonstration of Model Context Protocol (MCP) implementation in TypeSc
 demo-mcp/
 ├── server/
 │   └── src/
-│       ├── index.ts       # Stdio MCP server
-│       └── http-server.ts # HTTP/SSE MCP server
+│       ├── index.ts                     # Stdio MCP server
+│       ├── http-server.ts               # SSE MCP server (deprecated)
+│       └── streamable-http-server.ts    # Streamable HTTP MCP server (current standard)
 ├── client/
 │   └── src/
-│       ├── index.ts       # Stdio MCP client
-│       └── http-client.ts # HTTP MCP client
-└── package.json           # Dependencies and scripts
+│       ├── index.ts                     # Stdio MCP client
+│       ├── http-client.ts               # SSE MCP client
+│       └── streamable-http-client.ts    # Streamable HTTP MCP client
+└── package.json                         # Dependencies and scripts
 ```
 
 ## Installation
@@ -48,7 +51,7 @@ This will:
 4. Call the echo tool with different messages
 5. Clean up and disconnect
 
-### SSE Transport Demo
+### SSE Transport Demo (Deprecated)
 
 **Terminal 1** - Start SSE server:
 ```bash
@@ -60,6 +63,18 @@ bun run dev:server:http
 bun run dev:client:http
 ```
 
+### Streamable HTTP Transport Demo (Current Standard)
+
+**Terminal 1** - Start Streamable HTTP server:
+```bash
+bun run dev:server:streamable
+```
+
+**Terminal 2** - Run Streamable HTTP client:
+```bash
+bun run dev:client:streamable
+```
+
 ### Individual Components
 
 **Stdio Server (standalone)**:
@@ -67,11 +82,19 @@ bun run dev:client:http
 bun run dev:server
 ```
 
-**SSE Server**:
+**SSE Server (deprecated)**:
 ```bash
 bun run dev:server:http
 # SSE endpoint: http://localhost:3003/sse
 # Messages endpoint: http://localhost:3003/messages
+```
+
+**Streamable HTTP Server (current standard)**:
+```bash
+bun run dev:server:streamable
+# Endpoint: http://localhost:3004/mcp
+# Health check: http://localhost:3004/health
+# Status: http://localhost:3004/status
 ```
 
 **Stdio Client**:
@@ -84,6 +107,11 @@ bun run dev:client
 bun run dev:client:http
 ```
 
+**Streamable HTTP Client**:
+```bash
+bun run dev:client:streamable
+```
+
 ## MCP Tool: Echo
 
 The demo implements a single MCP tool called `echo`:
@@ -92,19 +120,30 @@ The demo implements a single MCP tool called `echo`:
 - **Description**: Echo a message back with a greeting from mcp-obs
 - **Parameters**:
   - `message` (optional): The message to echo back (defaults to "Hello World!")
-- **Response**: Returns "hello from mcp-obs: {message}"
+- **Response Format by Transport**:
+  - Stdio: `hello from mcp-obs (stdio): {message}`
+  - SSE: `hello from mcp-obs (SSE): {message}`
+  - Streamable HTTP: `hello from mcp-obs (Streamable HTTP): {message}`
 
 ## Transport Types
 
-### Stdio Transport
+### 1. Stdio Transport
 - **Use Case**: Local applications where client launches server as subprocess
 - **Communication**: JSON-RPC over stdin/stdout
 - **Benefits**: Simple, secure, no network exposure
+- **Status**: ✅ Current and recommended for local use
 
-### HTTP/SSE Transport
+### 2. SSE Transport (Deprecated)
 - **Use Case**: Remote servers, web applications, distributed systems
 - **Communication**: HTTP with Server-Sent Events for real-time updates
 - **Benefits**: Network accessible, standard web protocols
+- **Status**: ⚠️ Deprecated as of MCP v2025-03-26, use Streamable HTTP instead
+
+### 3. Streamable HTTP Transport (Current Standard)
+- **Use Case**: Remote servers, web applications, modern distributed systems
+- **Communication**: Single HTTP endpoint with bidirectional communication
+- **Benefits**: Resumable connections, better error handling, single endpoint architecture
+- **Status**: ✅ Current standard as of MCP v2025-03-26
 
 ## Example Output
 
@@ -128,15 +167,17 @@ The demo implements a single MCP tool called `echo`:
 The demo MCP servers can be used with Cursor IDE:
 
 1. **Configuration**: Located at `/Users/arshath/play/naptha/mcp-obs/.cursor/mcp.json`
-2. **Two servers available**:
+2. **Available servers**:
    - `demo-mcp-obs-stdio`: Process-based (always available)
-   - `demo-mcp-obs-sse`: HTTP-based (requires `bun run dev:server:http`)
+   - `demo-mcp-obs-streamable`: HTTP-based (requires `bun run dev:server:streamable`)
 
 **Usage in Cursor**:
 - Restart Cursor and open this project
 - Use `@demo-mcp-obs-stdio` for stdio transport
-- Use `@demo-mcp-obs-sse` for SSE transport (start server first)
-- Both provide the same `echo` tool with "hello from mcp-obs" responses
+  - Response: `hello from mcp-obs (stdio): {your message}`
+- Use `@demo-mcp-obs-streamable` for Streamable HTTP transport (start server first)
+  - Response: `hello from mcp-obs (Streamable HTTP): {your message}`
+- Both provide the same `echo` tool interface
 
 ## Development
 
@@ -147,13 +188,17 @@ bun run build
 
 **Run built version**:
 ```bash
-bun run start:client  # stdio demo
-bun run start:client:http  # SSE demo
+bun run start:client           # stdio demo
+bun run start:client:http      # SSE demo
+bun run start:client:streamable # Streamable HTTP demo (requires server running)
 ```
 
-**Test both transports**:
+**Test all transports**:
 ```bash
-./test-both-transports.sh
+bun run demo                   # stdio transport
+bun run demo:http             # SSE transport (requires server running)
+bun run demo:streamable       # Streamable HTTP transport (requires server running)
+./test-both-transports.sh     # Test script for multiple transports
 ```
 
 ## Dependencies

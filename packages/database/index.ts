@@ -1,25 +1,16 @@
+import 'dotenv/config'
 import { drizzle } from 'drizzle-orm/node-postgres'
+import { Resource } from 'sst'
 import * as authSchema from './src/auth-schema'
 import * as mcpAuthSchema from './src/mcp-auth-schema'
 
 export const schema = {
     ...authSchema,
-    ...mcpAuthSchema,
+    ...mcpAuthSchema
 }
 
-let dbUrl: string
-
-try {
-    // Try to use SST Resource if available
-    const { Resource } = await import('sst')
-    const pg = Resource.Postgres
-    dbUrl = `postgresql://${pg.username}:${pg.password}@${pg.host}:${pg.port}/${pg.database}`
-} catch (error) {
-    // Fallback to environment variable for local development
-    dbUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/mcp_obs'
-    console.log('Using local database configuration:', dbUrl.replace(/:[^:@]*@/, ':***@'))
-}
-
+const pg = Resource.Postgres
+const dbUrl = `postgresql://${pg.username}:${pg.password}@${pg.host}:${pg.port}/${pg.database}`
 export const db = drizzle(dbUrl, {
     schema: schema
 })

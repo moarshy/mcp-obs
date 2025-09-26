@@ -21,8 +21,9 @@ const PORT = 3004;
 app.use(cors());
 app.use(express.json());
 
-// Session management - keep track of transports per session
-const transports = new Map<string, StreamableHTTPServerTransport>();
+// Single global transport instance
+let globalTransport: StreamableHTTPServerTransport | null = null;
+let mcpServer: Server | null = null;
 
 // Helper function to check if request is an initialize request
 function isInitializeRequest(body: any): boolean {
@@ -85,88 +86,27 @@ function createMCPServer(): Server {
   return server;
 }
 
-// Main MCP endpoint - handles both POST and GET
+// Main MCP endpoint - single transport per connection approach
 app.all("/mcp", async (req, res) => {
   console.log(`📨 ${req.method} request to /mcp`);
 
-  const sessionId = req.headers["mcp-session-id"] as string;
-  console.log(`🔑 Session ID: ${sessionId || "none"}`);
+  try {
+    // Create a fresh transport for each request - let the SDK handle session management internally
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      enableDnsRebindingProtection: false, // Disable for local development
+    });
 
-  if (req.method === "POST") {
-    try {
-      let transport: StreamableHTTPServerTransport;
+    const server = createMCPServer();
+    await server.connect(transport);
 
-      // If we have a session ID, try to reuse existing transport
-      if (sessionId && transports.has(sessionId)) {
-        transport = transports.get(sessionId)!;
-        console.log(`♻️  Reusing transport for session ${sessionId}`);
-      }
-      // For initialize requests or when no session exists, create new transport
-      else {
-        console.log(`🆕 Creating new transport`);
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => randomUUID(),
-          enableDnsRebindingProtection: false, // Disable for local development
-        });
-
-        const server = createMCPServer();
-        await server.connect(transport);
-
-        // Store transport for future use
-        if (transport.sessionId) {
-          transports.set(transport.sessionId, transport);
-          console.log(`💾 Stored transport for session ${transport.sessionId}`);
-        }
-      }
-
-      await transport.handleRequest(req, res, req.body);
-      console.log(`✅ Request handled successfully`);
-    } catch (error) {
-      console.error(`❌ Error handling request:`, error);
-      if (!res.headersSent) {
-        res.status(500).json({ error: "Internal server error" });
-      }
+    await transport.handleRequest(req, res, req.body);
+    console.log(`✅ Request handled successfully`);
+  } catch (error) {
+    console.error(`❌ Error handling request:`, error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Internal server error" });
     }
-  }
-  // Handle GET requests for SSE streams
-  else if (req.method === "GET") {
-    if (!sessionId || !transports.has(sessionId)) {
-      console.error(`❌ No transport found for GET with session ${sessionId}`);
-      return res.status(400).json({
-        error: "No active session found. Initialize connection first."
-      });
-    }
-
-    try {
-      const transport = transports.get(sessionId)!;
-      await transport.handleRequest(req, res, null);
-      console.log(`✅ SSE stream established for session ${sessionId}`);
-    } catch (error) {
-      console.error(`❌ Error handling GET request:`, error);
-      if (!res.headersSent) {
-        res.status(500).json({ error: "Failed to handle GET request" });
-      }
-    }
-  }
-  // Handle DELETE requests for session termination
-  else if (req.method === "DELETE") {
-    if (sessionId && transports.has(sessionId)) {
-      try {
-        const transport = transports.get(sessionId)!;
-        await transport.handleRequest(req, res, null);
-        transports.delete(sessionId);
-        console.log(`🗑️  Session ${sessionId} terminated`);
-      } catch (error) {
-        console.error(`❌ Error terminating session:`, error);
-        if (!res.headersSent) {
-          res.status(500).json({ error: "Failed to terminate session" });
-        }
-      }
-    } else {
-      res.status(404).json({ error: "Session not found" });
-    }
-  } else {
-    res.status(405).json({ error: `Method ${req.method} not allowed` });
   }
 });
 
@@ -176,8 +116,7 @@ app.get("/health", (req, res) => {
     status: "ok",
     service: "demo-mcp-streamable-server",
     transport: "Streamable HTTP",
-    uptime: process.uptime(),
-    activeSessions: transports.size
+    uptime: process.uptime()
   });
 });
 
@@ -188,9 +127,7 @@ app.get("/status", (req, res) => {
     service: "demo-mcp-streamable-server",
     uptime: process.uptime(),
     transport: "Streamable HTTP (MCP v2025-03-26)",
-    endpoint: "/mcp",
-    activeSessions: transports.size,
-    sessionIds: Array.from(transports.keys())
+    endpoint: "/mcp"
   });
 });
 
