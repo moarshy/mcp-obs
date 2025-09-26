@@ -17,7 +17,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { orpcClient } from '@/lib/orpc'
+import { updateMcpServerAction, deleteMcpServerAction } from '@/lib/orpc/actions/mcp-servers'
+import { validateSlug } from '@/lib/actions/validate-slug'
 import { Server, ExternalLink, AlertCircle, CheckCircle, Trash2 } from 'lucide-react'
 
 interface EditMcpServerDialogProps {
@@ -71,7 +72,7 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
 
   const router = useRouter()
 
-  const validateSlug = async (slug: string) => {
+  const handleSlugValidation = async (slug: string) => {
     if (!slug || slug === mcpServer.slug) {
       setSlugValidation({
         isChecking: false,
@@ -84,10 +85,7 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
     setSlugValidation({ isChecking: true, isAvailable: null, message: 'Checking availability...' })
 
     try {
-      const result = await orpcClient.mcp.validateSlug({
-        slug,
-        excludeServerId: mcpServer.id
-      })
+      const result = await validateSlug(slug, mcpServer.id)
       setSlugValidation({
         isChecking: false,
         isAvailable: result.available,
@@ -111,7 +109,7 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
     setFormData(prev => ({ ...prev, slug: cleanSlug }))
 
     // Debounce slug validation
-    const timeoutId = setTimeout(() => validateSlug(cleanSlug), 500)
+    const timeoutId = setTimeout(() => handleSlugValidation(cleanSlug), 500)
     return () => clearTimeout(timeoutId)
   }
 
@@ -121,17 +119,17 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
     setError('')
 
     try {
-      await orpcClient.mcp.updateMcpServer({
+      await updateMcpServerAction({
         id: mcpServer.id,
         name: formData.name !== mcpServer.name ? formData.name : undefined,
         slug: formData.slug !== mcpServer.slug ? formData.slug : undefined,
         description: formData.description !== (mcpServer.description || '') ? formData.description : undefined,
-        // Convert hours/days back to seconds for API
-        accessTokenExpiration: formData.accessTokenExpiration !== Math.floor(mcpServer.accessTokenExpiration / 3600)
-          ? formData.accessTokenExpiration * 3600 : undefined,
-        refreshTokenExpiration: formData.refreshTokenExpiration !== Math.floor(mcpServer.refreshTokenExpiration / 86400)
-          ? formData.refreshTokenExpiration * 86400 : undefined,
-        scopesSupported: formData.scopesSupported !== mcpServer.scopesSupported ? formData.scopesSupported : undefined,
+        allowRegistration: formData.allowRegistration,
+        requireEmailVerification: formData.requireEmailVerification,
+        enablePasswordAuth: formData.enablePasswordAuth,
+        enableGoogleAuth: formData.enableGoogleAuth,
+        enableGithubAuth: formData.enableGithubAuth,
+        enabled: formData.enabled,
       })
 
       setOpen(false)
@@ -152,7 +150,7 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
     setError('')
 
     try {
-      await orpcClient.mcp.deleteMcpServer({ id: mcpServer.id })
+      await deleteMcpServerAction({ id: mcpServer.id })
       setOpen(false)
       router.push('/dashboard/mcp-servers')
     } catch (error: any) {
@@ -235,9 +233,6 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
                         ? "border-red-500" : ""
                     }
                   />
-                  <span className="ml-2 text-sm text-muted-foreground whitespace-nowrap">
-                    .mcp-obs.com
-                  </span>
                 </div>
 
                 {formData.slug && (
@@ -266,10 +261,7 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
                     <ExternalLink className="h-3 w-3 mr-2 text-muted-foreground" />
                     <span className="text-muted-foreground">New URL: </span>
                     <code className="ml-1 px-1 bg-background rounded text-foreground">
-                      {process.env.NODE_ENV === 'development'
-                        ? `localhost:3000?mcp_server=${formData.slug}`
-                        : `${formData.slug}.mcp-obs.com`
-                      }
+                      {formData.slug}
                     </code>
                   </div>
                 )}

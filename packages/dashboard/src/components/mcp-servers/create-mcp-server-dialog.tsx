@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,15 +17,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { orpcClient } from '@/lib/orpc'
+import { createMcpServerAction } from '@/lib/orpc/actions/mcp-servers'
+import { validateSlug } from '@/lib/actions/validate-slug'
 import { Server, ExternalLink, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface CreateMcpServerDialogProps {
-  organizationId: string
   children: React.ReactNode
 }
 
-export function CreateMcpServerDialog({ organizationId, children }: CreateMcpServerDialogProps) {
+export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -38,6 +38,8 @@ export function CreateMcpServerDialog({ organizationId, children }: CreateMcpSer
     isAvailable: null,
     message: ''
   })
+
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
   const [formData, setFormData] = useState({
     name: '',
@@ -53,6 +55,28 @@ export function CreateMcpServerDialog({ organizationId, children }: CreateMcpSer
 
   const router = useRouter()
 
+  // Debounced slug validation using useEffect
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+
+    if (!formData.slug) {
+      setSlugValidation({ isChecking: false, isAvailable: null, message: '' })
+      return
+    }
+
+    debounceRef.current = setTimeout(() => {
+      validateSlugAsync(formData.slug)
+    }, 500)
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+      }
+    }
+  }, [formData.slug])
+
   const generateSlugFromName = (name: string) => {
     return name
       .toLowerCase()
@@ -67,30 +91,30 @@ export function CreateMcpServerDialog({ organizationId, children }: CreateMcpSer
       // Auto-generate slug if it's empty or matches the previous auto-generated slug
       if (!prev.slug || prev.slug === generateSlugFromName(prev.name)) {
         newData.slug = generateSlugFromName(value)
-        if (newData.slug) {
-          validateSlug(newData.slug)
-        }
       }
       return newData
     })
   }
 
-  const validateSlug = async (slug: string) => {
+  const validateSlugAsync = async (slug: string) => {
     if (!slug) {
       setSlugValidation({ isChecking: false, isAvailable: null, message: '' })
       return
     }
 
+    console.log('Validating slug:', slug)
     setSlugValidation({ isChecking: true, isAvailable: null, message: 'Checking availability...' })
 
     try {
-      const result = await orpcClient.mcp.validateSlug({ slug })
+      const result = await validateSlug(slug)
+      console.log('Validation result:', result)
       setSlugValidation({
         isChecking: false,
         isAvailable: result.available,
         message: result.message
       })
     } catch (error) {
+      console.error('Validation error:', error)
       setSlugValidation({
         isChecking: false,
         isAvailable: false,
@@ -106,10 +130,6 @@ export function CreateMcpServerDialog({ organizationId, children }: CreateMcpSer
       .substring(0, 50)
 
     setFormData(prev => ({ ...prev, slug: cleanSlug }))
-
-    // Debounce slug validation
-    const timeoutId = setTimeout(() => validateSlug(cleanSlug), 500)
-    return () => clearTimeout(timeoutId)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,9 +138,15 @@ export function CreateMcpServerDialog({ organizationId, children }: CreateMcpSer
     setError('')
 
     try {
-      const newServer = await orpcClient.mcp.createMcpServer({
-        ...formData,
-        organizationId,
+      const newServer = await createMcpServerAction({
+        name: formData.name,
+        slug: formData.slug,
+        description: formData.description,
+        allowRegistration: formData.allowRegistration,
+        requireEmailVerification: formData.requireEmailVerification,
+        enablePasswordAuth: formData.enablePasswordAuth,
+        enableGoogleAuth: formData.enableGoogleAuth,
+        enableGithubAuth: formData.enableGithubAuth,
       })
 
       setOpen(false)
@@ -137,7 +163,7 @@ export function CreateMcpServerDialog({ organizationId, children }: CreateMcpSer
       })
       setSlugValidation({ isChecking: false, isAvailable: null, message: '' })
 
-      // Refresh the page to show the new server
+      // Router refresh is handled by the server action's revalidatePath
       router.refresh()
     } catch (error: any) {
       setError(error.message || 'Failed to create MCP server')
@@ -193,20 +219,15 @@ export function CreateMcpServerDialog({ organizationId, children }: CreateMcpSer
             <div>
               <Label htmlFor="slug">Subdomain *</Label>
               <div className="space-y-2">
-                <div className="flex items-center">
-                  <Input
-                    id="slug"
-                    value={formData.slug}
-                    onChange={(e) => handleSlugChange(e.target.value)}
-                    placeholder="my-server"
-                    required
-                    disabled={isLoading}
-                    className={slugValidation.isAvailable === false ? "border-red-500" : ""}
-                  />
-                  <span className="ml-2 text-sm text-muted-foreground whitespace-nowrap">
-                    .mcp-obs.com
-                  </span>
-                </div>
+                <Input
+                  id="slug"
+                  value={formData.slug}
+                  onChange={(e) => handleSlugChange(e.target.value)}
+                  placeholder="my-server"
+                  required
+                  disabled={isLoading}
+                  className={slugValidation.isAvailable === false ? "border-red-500" : ""}
+                />
 
                 {formData.slug && (
                   <div className="flex items-center text-sm">
@@ -234,10 +255,7 @@ export function CreateMcpServerDialog({ organizationId, children }: CreateMcpSer
                     <ExternalLink className="h-3 w-3 mr-2 text-muted-foreground" />
                     <span className="text-muted-foreground">Your server will be accessible at: </span>
                     <code className="ml-1 px-1 bg-background rounded text-foreground">
-                      {process.env.NODE_ENV === 'development'
-                        ? `localhost:3000?mcp_server=${formData.slug}`
-                        : `${formData.slug}.mcp-obs.com`
-                      }
+                      {formData.slug}
                     </code>
                   </div>
                 )}

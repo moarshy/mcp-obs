@@ -137,7 +137,9 @@ export const updateMcpServerAction = base
 
       // If slug is being updated, regenerate all OAuth endpoints
       if (input.slug && input.slug !== existingServer.slug) {
-        const issuerUrl = `https://${input.slug}.mcp-obs.com`
+        const issuerUrl = process.env.NODE_ENV === 'development'
+          ? `http://localhost:3000`
+          : `https://${input.slug}.mcp-obs.com`
         updateData.issuerUrl = issuerUrl
         updateData.authorizationEndpoint = `${issuerUrl}/oauth/authorize`
         updateData.tokenEndpoint = `${issuerUrl}/oauth/token`
