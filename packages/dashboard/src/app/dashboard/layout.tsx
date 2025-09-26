@@ -1,4 +1,4 @@
-import { getServerSession, getUserOrganizations } from '@/lib/auth'
+import { getServerSession, getUserOrganizations } from '@/lib/auth/server'
 import { redirect } from 'next/navigation'
 import { DashboardSidebar } from '@/components/dashboard/dashboard-sidebar'
 

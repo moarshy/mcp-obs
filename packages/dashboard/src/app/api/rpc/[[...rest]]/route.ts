@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from '@/lib/auth'
+import { getServerSession } from '@/lib/auth/server'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
 

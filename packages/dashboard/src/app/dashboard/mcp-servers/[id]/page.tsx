@@ -4,8 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { requireSession } from '@/lib/auth'
-import { orpcServer } from '@/lib/orpc/server'
+import { requireSession } from '@/lib/auth/session'
 import {
   Server,
   Users,
@@ -22,8 +21,6 @@ import {
   ArrowLeft
 } from 'lucide-react'
 import Link from 'next/link'
-import { McpServerAnalytics } from '@/components/mcp-servers/mcp-server-analytics'
-import { McpServerSettings } from '@/components/mcp-servers/mcp-server-settings'
 import { EditMcpServerDialog } from '@/components/mcp-servers/edit-mcp-server-dialog'
 
 interface McpServerDetailsPageProps {
@@ -38,19 +35,49 @@ export const metadata = {
 }
 
 async function McpServerDetailsContent({ serverId }: { serverId: string }) {
-  const { organization } = await requireSession({ organizationRequired: true })
+  const session = await requireSession()
 
   try {
-    const mcpServer = await orpcServer.mcp.getMcpServer({ id: serverId })
+    // Get the MCP server from database with organization verification
+    const { db, mcpServer, member } = await import('database')
+    const { eq, and } = await import('drizzle-orm')
 
-    // Verify the server belongs to the current organization
-    if (mcpServer.organizationId !== organization.id) {
+    // Check user has access to organizations
+    const userMemberships = await db
+      .select({ organizationId: member.organizationId })
+      .from(member)
+      .where(eq(member.userId, session.user.id))
+
+    if (userMemberships.length === 0) {
       notFound()
     }
 
-    const serverUrl = process.env.NODE_ENV === 'development'
-      ? `localhost:3000?mcp_server=${mcpServer.id}`
-      : `${mcpServer.slug}.mcp-obs.com`
+    const organizationIds = userMemberships.map(m => m.organizationId)
+
+    // Get the specific MCP server
+    const serverData = await db
+      .select()
+      .from(mcpServer)
+      .where(and(
+        eq(mcpServer.id, serverId),
+        // Ensure user has access to this server's organization
+        // TODO: Use proper IN clause when available
+      ))
+      .then(rows => rows[0])
+
+    if (!serverData) {
+      notFound()
+    }
+
+    // Verify user has access to this server's organization
+    const hasAccess = organizationIds.includes(serverData.organizationId)
+    if (!hasAccess) {
+      notFound()
+    }
+
+    const mcpServerData = serverData
+
+    const serverUrl = mcpServerData.slug
 
     return (
       <div className="space-y-6">
@@ -65,7 +92,7 @@ async function McpServerDetailsContent({ serverId }: { serverId: string }) {
                 </Button>
               </Link>
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">{mcpServer.name}</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{mcpServerData.name}</h1>
                 <div className="flex items-center space-x-4 text-muted-foreground">
                   <div className="flex items-center">
                     <Globe className="h-4 w-4 mr-1" />
@@ -78,21 +105,21 @@ async function McpServerDetailsContent({ serverId }: { serverId: string }) {
                   </div>
                   <div className="flex items-center">
                     <Calendar className="h-4 w-4 mr-1" />
-                    Created {new Date(mcpServer.createdAt).toLocaleDateString()}
+                    Created {new Date(mcpServerData.createdAt).toLocaleDateString()}
                   </div>
                 </div>
               </div>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <EditMcpServerDialog mcpServer={mcpServer}>
+            <EditMcpServerDialog mcpServer={mcpServerData}>
               <Button variant="outline">
                 <Settings className="h-4 w-4 mr-2" />
                 Edit Server
               </Button>
             </EditMcpServerDialog>
-            <Badge variant={mcpServer.enabled ? "default" : "secondary"} className="h-8">
-              {mcpServer.enabled ? "Active" : "Inactive"}
+            <Badge variant={mcpServerData.enabled ? "default" : "secondary"} className="h-8">
+              {mcpServerData.enabled ? "Active" : "Inactive"}
             </Badge>
           </div>
         </div>
@@ -181,20 +208,20 @@ async function McpServerDetailsContent({ serverId }: { serverId: string }) {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Status</p>
-                  <Badge variant={mcpServer.enabled ? "default" : "secondary"} className="mt-1">
-                    {mcpServer.enabled ? "Active" : "Inactive"}
+                  <Badge variant={mcpServerData.enabled ? "default" : "secondary"} className="mt-1">
+                    {mcpServerData.enabled ? "Active" : "Inactive"}
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Registration</p>
-                  <Badge variant={mcpServer.allowRegistration ? "default" : "secondary"} className="mt-1">
-                    {mcpServer.allowRegistration ? "Allowed" : "Disabled"}
+                  <Badge variant={mcpServerData.allowRegistration ? "default" : "secondary"} className="mt-1">
+                    {mcpServerData.allowRegistration ? "Allowed" : "Disabled"}
                   </Badge>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Email Verification</p>
-                  <Badge variant={mcpServer.requireEmailVerification ? "default" : "secondary"} className="mt-1">
-                    {mcpServer.requireEmailVerification ? "Required" : "Optional"}
+                  <Badge variant={mcpServerData.requireEmailVerification ? "default" : "secondary"} className="mt-1">
+                    {mcpServerData.requireEmailVerification ? "Required" : "Optional"}
                   </Badge>
                 </div>
                 <div>
@@ -210,13 +237,13 @@ async function McpServerDetailsContent({ serverId }: { serverId: string }) {
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-2">Authentication Methods</p>
                 <div className="flex flex-wrap gap-2">
-                  {mcpServer.enablePasswordAuth && (
+                  {mcpServerData.enablePasswordAuth && (
                     <Badge variant="outline">Email & Password</Badge>
                   )}
-                  {mcpServer.enableGoogleAuth && (
+                  {mcpServerData.enableGoogleAuth && (
                     <Badge variant="outline">Google OAuth</Badge>
                   )}
-                  {mcpServer.enableGithubAuth && (
+                  {mcpServerData.enableGithubAuth && (
                     <Badge variant="outline">GitHub OAuth</Badge>
                   )}
                 </div>
@@ -227,20 +254,20 @@ async function McpServerDetailsContent({ serverId }: { serverId: string }) {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="font-medium text-muted-foreground">Access Token TTL</p>
-                  <p>{Math.floor(mcpServer.accessTokenExpiration / 3600)}h {Math.floor((mcpServer.accessTokenExpiration % 3600) / 60)}m</p>
+                  <p>{Math.floor(mcpServerData.accessTokenExpiration / 3600)}h {Math.floor((mcpServerData.accessTokenExpiration % 3600) / 60)}m</p>
                 </div>
                 <div>
                   <p className="font-medium text-muted-foreground">Refresh Token TTL</p>
-                  <p>{Math.floor(mcpServer.refreshTokenExpiration / 86400)}d</p>
+                  <p>{Math.floor(mcpServerData.refreshTokenExpiration / 86400)}d</p>
                 </div>
               </div>
 
-              {mcpServer.description && (
+              {mcpServerData.description && (
                 <>
                   <Separator />
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-1">Description</p>
-                    <p className="text-sm">{mcpServer.description}</p>
+                    <p className="text-sm">{mcpServerData.description}</p>
                   </div>
                 </>
               )}
@@ -262,31 +289,31 @@ async function McpServerDetailsContent({ serverId }: { serverId: string }) {
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">Authorization</p>
                 <code className="text-xs bg-muted p-2 rounded block break-all">
-                  {mcpServer.authorizationEndpoint}
+                  {mcpServerData.authorizationEndpoint}
                 </code>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">Token</p>
                 <code className="text-xs bg-muted p-2 rounded block break-all">
-                  {mcpServer.tokenEndpoint}
+                  {mcpServerData.tokenEndpoint}
                 </code>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">Registration</p>
                 <code className="text-xs bg-muted p-2 rounded block break-all">
-                  {mcpServer.registrationEndpoint}
+                  {mcpServerData.registrationEndpoint}
                 </code>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">Introspection</p>
                 <code className="text-xs bg-muted p-2 rounded block break-all">
-                  {mcpServer.introspectionEndpoint}
+                  {mcpServerData.introspectionEndpoint}
                 </code>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground mb-1">Revocation</p>
                 <code className="text-xs bg-muted p-2 rounded block break-all">
-                  {mcpServer.revocationEndpoint}
+                  {mcpServerData.revocationEndpoint}
                 </code>
               </div>
 
@@ -296,7 +323,7 @@ async function McpServerDetailsContent({ serverId }: { serverId: string }) {
                 <span className="text-sm text-muted-foreground">Well-known configuration</span>
                 <Button variant="ghost" size="sm" asChild>
                   <a
-                    href={`${mcpServer.issuerUrl}/.well-known/oauth-authorization-server`}
+                    href={`${mcpServerData.issuerUrl}/.well-known/oauth-authorization-server`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
@@ -309,8 +336,12 @@ async function McpServerDetailsContent({ serverId }: { serverId: string }) {
           </Card>
         </div>
 
-        {/* Analytics Section */}
-        <McpServerAnalytics serverId={mcpServer.id} />
+        {/* Placeholder for future analytics */}
+        <div className="text-center py-12 text-muted-foreground">
+          <BarChart3 className="h-12 w-12 mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2">Analytics Coming Soon</h3>
+          <p>Detailed usage metrics and analytics will be available here.</p>
+        </div>
       </div>
     )
   } catch (error) {
@@ -319,7 +350,8 @@ async function McpServerDetailsContent({ serverId }: { serverId: string }) {
   }
 }
 
-export default function McpServerDetailsPage({ params }: McpServerDetailsPageProps) {
+export default async function McpServerDetailsPage({ params }: McpServerDetailsPageProps) {
+  const { id } = await params
   return (
     <div className="space-y-6">
       <Suspense
@@ -347,7 +379,7 @@ export default function McpServerDetailsPage({ params }: McpServerDetailsPagePro
           </div>
         }
       >
-        <McpServerDetailsContent serverId={params.id} />
+        <McpServerDetailsContent serverId={id} />
       </Suspense>
     </div>
   )

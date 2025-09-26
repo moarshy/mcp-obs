@@ -1,5 +1,5 @@
 import { OnboardingClient } from './onboarding-client'
-import { requireSession } from '@/lib/auth'
+import { requireSession } from '@/lib/auth/session'
 
 export const metadata = {
   title: 'Onboarding | mcp-obs',

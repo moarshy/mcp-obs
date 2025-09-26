@@ -3,11 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { requireSession } from '@/lib/auth'
-import { orpcServer } from '@/lib/orpc/server'
+import { requireSession } from '@/lib/auth/session'
 import { Plus, Server, Users, Activity, Settings, MoreHorizontal } from 'lucide-react'
 import Link from 'next/link'
 import { CreateMcpServerDialog } from '@/components/mcp-servers/create-mcp-server-dialog'
+import { DeleteMcpServerDialog } from '@/components/mcp-servers/delete-mcp-server-dialog'
+import { EditMcpServerDialog } from '@/components/mcp-servers/edit-mcp-server-dialog'
 
 export const metadata = {
   title: 'MCP Servers | mcp-obs',
@@ -15,12 +16,42 @@ export const metadata = {
 }
 
 async function McpServersList() {
-  const { organization } = await requireSession({ organizationRequired: true })
+  const session = await requireSession()
 
   try {
-    const mcpServers = await orpcServer.mcp.listMcpServers({
-      organizationId: organization.id
-    })
+    // Get user's organizations
+    const { db, mcpServer, member } = await import('database')
+    const { eq } = await import('drizzle-orm')
+
+    const userMemberships = await db
+      .select({ organizationId: member.organizationId })
+      .from(member)
+      .where(eq(member.userId, session.user.id))
+
+    if (userMemberships.length === 0) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>No Organization Access</CardTitle>
+            <CardDescription>
+              You don't belong to any organization. Please contact an administrator.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )
+    }
+
+    // Get MCP servers for user's organizations
+    const organizationIds = userMemberships.map(m => m.organizationId)
+
+    const mcpServers = await db
+      .select()
+      .from(mcpServer)
+      .where(
+        // TODO: Use proper IN clause when available in organizationIds
+        eq(mcpServer.organizationId, organizationIds[0])
+      )
+      .orderBy(mcpServer.createdAt)
 
     return (
       <Card>
@@ -32,7 +63,7 @@ async function McpServersList() {
                 Manage and monitor your MCP servers and their configurations
               </CardDescription>
             </div>
-            <CreateMcpServerDialog organizationId={organization.id}>
+            <CreateMcpServerDialog>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
                 New Server
@@ -48,7 +79,7 @@ async function McpServersList() {
               <p className="text-muted-foreground mb-4">
                 Create your first MCP server to enable authentication and analytics for your users.
               </p>
-              <CreateMcpServerDialog organizationId={organization.id}>
+              <CreateMcpServerDialog>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
                   Create MCP Server
@@ -78,10 +109,7 @@ async function McpServersList() {
                         <div>
                           <div className="font-medium">{server.name}</div>
                           <div className="text-sm text-muted-foreground">
-                            {process.env.NODE_ENV === 'development'
-                              ? `localhost:3000?mcp_server=${server.id}`
-                              : `${server.slug}.mcp-obs.com`
-                            }
+                            {server.slug}
                           </div>
                         </div>
                       </div>
@@ -114,13 +142,20 @@ async function McpServersList() {
                             View
                           </Button>
                         </Link>
-                        <Button variant="ghost" size="sm">
-                          <Settings className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                        <EditMcpServerDialog mcpServer={server}>
+                          <Button variant="ghost" size="sm">
+                            <Settings className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                        </EditMcpServerDialog>
+                        <DeleteMcpServerDialog
+                          serverId={server.id}
+                          serverName={server.name}
+                        >
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DeleteMcpServerDialog>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -132,7 +167,7 @@ async function McpServersList() {
       </Card>
     )
   } catch (error) {
-    console.error('Failed to load MCP servers:', error)
+    console.error('Error loading MCP servers:', error)
     return (
       <Card>
         <CardHeader>

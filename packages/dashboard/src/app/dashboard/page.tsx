@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { requireSession } from '@/lib/auth'
+import { requireSession } from '@/lib/auth/session'
 import { TrendingUp, TrendingDown, Plus } from 'lucide-react'
 
 export const metadata = {
