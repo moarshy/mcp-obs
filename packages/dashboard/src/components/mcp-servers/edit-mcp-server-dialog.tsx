@@ -17,8 +17,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { updateMcpServerAction, deleteMcpServerAction } from '@/lib/orpc/actions/mcp-servers'
+import { updateMcpServerAction } from '@/lib/orpc/actions/mcp-servers'
 import { validateSlug } from '@/lib/actions/validate-slug'
+import { DeleteMcpServerDialog } from './delete-mcp-server-dialog'
 import { Server, ExternalLink, AlertCircle, CheckCircle, Trash2 } from 'lucide-react'
 
 interface EditMcpServerDialogProps {
@@ -43,7 +44,6 @@ interface EditMcpServerDialogProps {
 export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialogProps) {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState('')
   const [slugValidation, setSlugValidation] = useState<{
     isChecking: boolean
@@ -59,15 +59,8 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
     name: mcpServer.name,
     slug: mcpServer.slug,
     description: mcpServer.description || '',
-    enabled: mcpServer.enabled,
-    allowRegistration: mcpServer.allowRegistration,
-    requireEmailVerification: mcpServer.requireEmailVerification,
-    enablePasswordAuth: mcpServer.enablePasswordAuth,
-    enableGoogleAuth: mcpServer.enableGoogleAuth,
-    enableGithubAuth: mcpServer.enableGithubAuth,
-    accessTokenExpiration: Math.floor(mcpServer.accessTokenExpiration / 3600), // Convert seconds to hours
-    refreshTokenExpiration: Math.floor(mcpServer.refreshTokenExpiration / 86400), // Convert seconds to days
-    scopesSupported: mcpServer.scopesSupported,
+    // Derive platform auth enabled from existing auth settings
+    platformAuthEnabled: mcpServer.enabled && (mcpServer.enablePasswordAuth || mcpServer.enableGoogleAuth || mcpServer.enableGithubAuth),
   })
 
   const router = useRouter()
@@ -124,12 +117,7 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
         name: formData.name !== mcpServer.name ? formData.name : undefined,
         slug: formData.slug !== mcpServer.slug ? formData.slug : undefined,
         description: formData.description !== (mcpServer.description || '') ? formData.description : undefined,
-        allowRegistration: formData.allowRegistration,
-        requireEmailVerification: formData.requireEmailVerification,
-        enablePasswordAuth: formData.enablePasswordAuth,
-        enableGoogleAuth: formData.enableGoogleAuth,
-        enableGithubAuth: formData.enableGithubAuth,
-        enabled: formData.enabled,
+        platformAuthEnabled: formData.platformAuthEnabled,
       })
 
       setOpen(false)
@@ -141,24 +129,6 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
     }
   }
 
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this MCP server? This action cannot be undone and will invalidate all existing OAuth tokens.')) {
-      return
-    }
-
-    setIsDeleting(true)
-    setError('')
-
-    try {
-      await deleteMcpServerAction({ id: mcpServer.id })
-      setOpen(false)
-      router.push('/dashboard/mcp-servers')
-    } catch (error: any) {
-      setError(error.message || 'Failed to delete MCP server')
-    } finally {
-      setIsDeleting(false)
-    }
-  }
 
   const canSubmit = formData.name &&
                    formData.slug &&
@@ -168,15 +138,7 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
   const hasChanges = formData.name !== mcpServer.name ||
                     formData.slug !== mcpServer.slug ||
                     formData.description !== (mcpServer.description || '') ||
-                    formData.enabled !== mcpServer.enabled ||
-                    formData.allowRegistration !== mcpServer.allowRegistration ||
-                    formData.requireEmailVerification !== mcpServer.requireEmailVerification ||
-                    formData.enablePasswordAuth !== mcpServer.enablePasswordAuth ||
-                    formData.enableGoogleAuth !== mcpServer.enableGoogleAuth ||
-                    formData.enableGithubAuth !== mcpServer.enableGithubAuth ||
-                    formData.accessTokenExpiration !== Math.floor(mcpServer.accessTokenExpiration / 3600) ||
-                    formData.refreshTokenExpiration !== Math.floor(mcpServer.refreshTokenExpiration / 86400) ||
-                    formData.scopesSupported !== mcpServer.scopesSupported
+                    formData.platformAuthEnabled !== (mcpServer.enabled && (mcpServer.enablePasswordAuth || mcpServer.enableGoogleAuth || mcpServer.enableGithubAuth))
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -282,152 +244,29 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
 
           <Separator />
 
-          {/* Server Configuration */}
+          {/* Simple Auth Configuration */}
           <div className="space-y-4">
             <div>
-              <h4 className="text-sm font-medium mb-3">Server Configuration</h4>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="edit-enabled"
-                    checked={formData.enabled}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({ ...prev, enabled: checked === true }))
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="edit-enabled" className="text-sm">
-                    Enable server (users can authenticate)
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="edit-allowRegistration"
-                    checked={formData.allowRegistration}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({ ...prev, allowRegistration: checked === true }))
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="edit-allowRegistration" className="text-sm">
-                    Allow user registration (new users can sign up)
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="edit-requireEmailVerification"
-                    checked={formData.requireEmailVerification}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({ ...prev, requireEmailVerification: checked === true }))
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="edit-requireEmailVerification" className="text-sm">
-                    Require email verification
-                  </Label>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-medium mb-3">Authentication Methods</h4>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="edit-enablePasswordAuth"
-                    checked={formData.enablePasswordAuth}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({ ...prev, enablePasswordAuth: checked === true }))
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="edit-enablePasswordAuth" className="text-sm">
-                    Email & Password authentication
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="edit-enableGoogleAuth"
-                    checked={formData.enableGoogleAuth}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({ ...prev, enableGoogleAuth: checked === true }))
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="edit-enableGoogleAuth" className="text-sm">
-                    Google OAuth
-                  </Label>
-                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="edit-enableGithubAuth"
-                    checked={formData.enableGithubAuth}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({ ...prev, enableGithubAuth: checked === true }))
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="edit-enableGithubAuth" className="text-sm">
-                    GitHub OAuth
-                  </Label>
-                  <Badge variant="secondary" className="text-xs">Developer-friendly</Badge>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-medium mb-3">Token Configuration</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <h4 className="text-sm font-medium mb-3">Authentication</h4>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-platformAuthEnabled"
+                  checked={formData.platformAuthEnabled}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, platformAuthEnabled: checked === true }))
+                  }
+                  disabled={isLoading}
+                />
                 <div>
-                  <Label htmlFor="edit-accessTokenExpiration">Access Token TTL (hours)</Label>
-                  <Input
-                    id="edit-accessTokenExpiration"
-                    type="number"
-                    min={1}
-                    max={24}
-                    value={formData.accessTokenExpiration}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      accessTokenExpiration: parseInt(e.target.value) || 2
-                    }))}
-                    disabled={isLoading}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-refreshTokenExpiration">Refresh Token TTL (days)</Label>
-                  <Input
-                    id="edit-refreshTokenExpiration"
-                    type="number"
-                    min={1}
-                    max={30}
-                    value={formData.refreshTokenExpiration}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      refreshTokenExpiration: parseInt(e.target.value) || 7
-                    }))}
-                    disabled={isLoading}
-                  />
+                  <Label htmlFor="edit-platformAuthEnabled" className="text-sm font-medium">
+                    Enable platform authentication
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Provides OAuth authentication with Google, GitHub, and email/password.
+                    When disabled, your MCP server will be publicly accessible.
+                  </p>
                 </div>
               </div>
-            </div>
-
-            <div>
-              <Label htmlFor="edit-scopesSupported">Supported Scopes</Label>
-              <Input
-                id="edit-scopesSupported"
-                value={formData.scopesSupported}
-                onChange={(e) => setFormData(prev => ({ ...prev, scopesSupported: e.target.value }))}
-                placeholder="read,write"
-                disabled={isLoading}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Comma-separated list of OAuth scopes your server supports
-              </p>
             </div>
           </div>
 
@@ -445,25 +284,20 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
                       Permanently delete this server and all associated data. This action cannot be undone.
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleDelete}
-                    disabled={isDeleting || isLoading}
+                  <DeleteMcpServerDialog
+                    serverId={mcpServer.id}
+                    serverName={mcpServer.name}
                   >
-                    {isDeleting ? (
-                      <div className="flex items-center">
-                        <div className="animate-spin rounded-full h-3 w-3 border-b border-current mr-1"></div>
-                        Deleting...
-                      </div>
-                    ) : (
-                      <>
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Delete
-                      </>
-                    )}
-                  </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      disabled={isLoading}
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Delete
+                    </Button>
+                  </DeleteMcpServerDialog>
                 </div>
               </div>
             </div>
@@ -474,7 +308,7 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
-              disabled={isLoading || isDeleting}
+              disabled={isLoading}
             >
               Cancel
             </Button>

@@ -27,7 +27,17 @@ export async function GET(request: NextRequest) {
       // Try to extract from subdomain
       const isDevelopment = process.env.NODE_ENV === 'development'
 
-      if (!isDevelopment) {
+      if (isDevelopment) {
+        // Development: extract subdomain from localhost
+        const hostWithoutPort = host.replace(/:\d+$/, '')
+
+        if (hostWithoutPort.includes('.localhost')) {
+          const subdomain = hostWithoutPort.replace('.localhost', '')
+          if (subdomain && !subdomain.includes('.')) {
+            mcpServer = await getMcpServerBySlug(subdomain)
+          }
+        }
+      } else {
         // Production: extract subdomain
         const baseDomain = 'mcp-obs.com'
         const hostWithoutPort = host.replace(/:\d+$/, '')
@@ -42,6 +52,16 @@ export async function GET(request: NextRequest) {
     }
 
     if (!mcpServer) {
+      // In development, provide a generic OAuth discovery response
+      // In production, this should only be accessible via subdomains
+      if (process.env.NODE_ENV === 'development') {
+        return NextResponse.json({
+          error: 'No MCP server specified',
+          message: 'Access this endpoint with ?mcp_server_id=<id> parameter or via subdomain in production',
+          example_url: 'http://localhost:3000/.well-known/oauth-authorization-server?mcp_server_id=<server-id>'
+        }, { status: 404 })
+      }
+
       return NextResponse.json(
         { error: 'MCP server not found' },
         { status: 404 }
@@ -69,13 +89,13 @@ export async function GET(request: NextRequest) {
       introspection_endpoint: `${baseUrl}/oauth/introspect`,
       revocation_endpoint: `${baseUrl}/oauth/revoke`,
 
-      // Supported capabilities
+      // Supported capabilities - use schema fields or sensible defaults
       scopes_supported: mcpServer.scopesSupported.split(','),
-      response_types_supported: mcpServer.responseTypesSupported.split(','),
-      grant_types_supported: mcpServer.grantTypesSupported.split(','),
+      response_types_supported: ['code'], // OAuth 2.1 standard
+      grant_types_supported: ['authorization_code', 'refresh_token'], // OAuth 2.1 standard
 
-      // PKCE support (mandatory for MCP)
-      code_challenge_methods_supported: mcpServer.codeChallengeMethodsSupported.split(','),
+      // PKCE support (mandatory for OAuth 2.1)
+      code_challenge_methods_supported: ['S256'], // OAuth 2.1 requires S256
 
       // Client authentication methods
       token_endpoint_auth_methods_supported: [

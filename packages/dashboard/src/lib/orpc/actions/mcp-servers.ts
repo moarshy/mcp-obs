@@ -11,11 +11,7 @@ const createMcpServerSchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens'),
   description: z.string().optional(),
-  allowRegistration: z.boolean().default(true),
-  requireEmailVerification: z.boolean().default(false),
-  enablePasswordAuth: z.boolean().default(true),
-  enableGoogleAuth: z.boolean().default(false),
-  enableGithubAuth: z.boolean().default(false),
+  platformAuthEnabled: z.boolean().default(true),
 })
 
 const updateMcpServerSchema = z.object({
@@ -23,12 +19,7 @@ const updateMcpServerSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens').optional(),
   description: z.string().optional(),
-  allowRegistration: z.boolean().optional(),
-  requireEmailVerification: z.boolean().optional(),
-  enablePasswordAuth: z.boolean().optional(),
-  enableGoogleAuth: z.boolean().optional(),
-  enableGithubAuth: z.boolean().optional(),
-  enabled: z.boolean().optional(),
+  platformAuthEnabled: z.boolean().optional(),
 })
 
 const validateSlugSchema = z.object({
@@ -46,22 +37,42 @@ export const createMcpServerAction = base
     }
 
     try {
-      // 2. Get user's active organization
+      // 2. Get user's organization through membership
       const userMemberships = await db
         .select({ organizationId: member.organizationId })
         .from(member)
         .where(eq(member.userId, session.user.id))
 
-      if (userMemberships.length === 0) {
-        throw errors.UNAUTHORIZED({ message: 'No organization membership found' })
-      }
+      let organizationId: string
 
-      // Use the first organization for now (in real app, you'd use activeOrganizationId from session)
-      const organizationId = userMemberships[0].organizationId
+      if (userMemberships.length === 0) {
+        // Create a new organization for the user
+        const newOrg = await db.insert(organization).values({
+          id: `org-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name: `${session.user.name || session.user.email}'s Organization`,
+          slug: `org-${session.user.id?.slice(-8) || Date.now()}`,
+          createdAt: new Date(),
+          metadata: JSON.stringify({ createdBy: session.user.id })
+        }).returning()
+
+        organizationId = newOrg[0].id
+
+        // Add user as a member of the new organization
+        await db.insert(member).values({
+          id: `member-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          organizationId,
+          userId: session.user.id,
+          role: 'admin',
+          createdAt: new Date()
+        })
+      } else {
+        // Use the first organization
+        organizationId = userMemberships[0].organizationId
+      }
 
       // 3. Create MCP server with real database insert
       const issuerUrl = process.env.NODE_ENV === 'development'
-        ? `http://localhost:3000`
+        ? `http://${input.slug}.localhost:3000`
         : `https://${input.slug}.mcp-obs.com`
 
       const result = await db.insert(mcpServer).values({
@@ -75,11 +86,13 @@ export const createMcpServerAction = base
         registrationEndpoint: `${issuerUrl}/oauth/register`,
         introspectionEndpoint: `${issuerUrl}/oauth/introspect`,
         revocationEndpoint: `${issuerUrl}/oauth/revoke`,
-        allowRegistration: input.allowRegistration,
-        requireEmailVerification: input.requireEmailVerification,
-        enablePasswordAuth: input.enablePasswordAuth,
-        enableGoogleAuth: input.enableGoogleAuth,
-        enableGithubAuth: input.enableGithubAuth,
+        // Default to sensible auth settings
+        enabled: input.platformAuthEnabled,
+        allowRegistration: input.platformAuthEnabled, // Only allow registration if auth is enabled
+        requireEmailVerification: false, // Keep it simple by default
+        enablePasswordAuth: input.platformAuthEnabled, // Enable if auth is on
+        enableGoogleAuth: input.platformAuthEnabled, // Enable all social providers by default
+        enableGithubAuth: input.platformAuthEnabled,
       }).returning()
 
       // 4. Cache revalidation (CRITICAL)
@@ -109,20 +122,24 @@ export const updateMcpServerAction = base
     }
 
     try {
-      // Verify the server belongs to user's organization
+      // Get user's organization through membership
       const userMemberships = await db
         .select({ organizationId: member.organizationId })
         .from(member)
         .where(eq(member.userId, session.user.id))
 
-      const organizationIds = userMemberships.map(m => m.organizationId)
+      if (userMemberships.length === 0) {
+        throw errors.UNAUTHORIZED({ message: 'No organization membership found' })
+      }
+
+      const organizationId = userMemberships[0].organizationId
 
       const existingServer = await db
         .select()
         .from(mcpServer)
         .where(and(
           eq(mcpServer.id, input.id),
-          // TODO: Add proper organization check once we have activeOrganizationId
+          eq(mcpServer.organizationId, organizationId)
         ))
         .then(rows => rows[0])
 
@@ -132,13 +149,23 @@ export const updateMcpServerAction = base
 
       // Update with only provided fields
       const updateData = Object.fromEntries(
-        Object.entries(input).filter(([key, value]) => value !== undefined && key !== 'id')
+        Object.entries(input).filter(([key, value]) => value !== undefined && key !== 'id' && key !== 'platformAuthEnabled')
       )
+
+      // Handle platformAuthEnabled conversion to individual auth settings
+      if (input.platformAuthEnabled !== undefined) {
+        updateData.enabled = input.platformAuthEnabled
+        updateData.allowRegistration = input.platformAuthEnabled
+        updateData.requireEmailVerification = false // Keep simple
+        updateData.enablePasswordAuth = input.platformAuthEnabled
+        updateData.enableGoogleAuth = input.platformAuthEnabled
+        updateData.enableGithubAuth = input.platformAuthEnabled
+      }
 
       // If slug is being updated, regenerate all OAuth endpoints
       if (input.slug && input.slug !== existingServer.slug) {
         const issuerUrl = process.env.NODE_ENV === 'development'
-          ? `http://localhost:3000`
+          ? `http://${input.slug}.localhost:3000`
           : `https://${input.slug}.mcp-obs.com`
         updateData.issuerUrl = issuerUrl
         updateData.authorizationEndpoint = `${issuerUrl}/oauth/authorize`
@@ -178,29 +205,30 @@ export const deleteMcpServerAction = base
     }
 
     try {
+      // Get user's organization through membership
+      const userMemberships = await db
+        .select({ organizationId: member.organizationId })
+        .from(member)
+        .where(eq(member.userId, session.user.id))
+
+      if (userMemberships.length === 0) {
+        throw errors.UNAUTHORIZED({ message: 'No organization membership found' })
+      }
+
+      const organizationId = userMemberships[0].organizationId
+
       // Verify the server belongs to user's organization before deleting
       const existingServer = await db
         .select()
         .from(mcpServer)
-        .where(eq(mcpServer.id, input.id))
+        .where(and(
+          eq(mcpServer.id, input.id),
+          eq(mcpServer.organizationId, organizationId)
+        ))
         .then(rows => rows[0])
 
       if (!existingServer) {
         throw errors.RESOURCE_NOT_FOUND({ message: 'MCP server not found' })
-      }
-
-      // Check user has access to this organization
-      const userMembership = await db
-        .select()
-        .from(member)
-        .where(and(
-          eq(member.userId, session.user.id),
-          eq(member.organizationId, existingServer.organizationId)
-        ))
-        .then(rows => rows[0])
-
-      if (!userMembership) {
-        throw errors.INSUFFICIENT_PERMISSIONS({ message: 'Access denied' })
       }
 
       // Delete the server (cascading deletes will handle related records)

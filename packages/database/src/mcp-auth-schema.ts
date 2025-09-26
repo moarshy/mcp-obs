@@ -1,44 +1,7 @@
 import { boolean, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { mcpServer } from './schema'
 
-// MCP Servers with OAuth configuration
-export const mcpServer = pgTable('mcp_server', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull(),
-  slug: text('slug').notNull().unique(), // Global slug for subdomain
-  description: text('description'),
-  logoUrl: text('logo_url'),
-  organizationId: text('organization_id').notNull(), // References auth-schema organization
-
-  // OAuth Configuration
-  issuerUrl: text('issuer_url').notNull(), // https://slug.mcp-obs.com
-  authorizationEndpoint: text('authorization_endpoint').notNull(),
-  tokenEndpoint: text('token_endpoint').notNull(),
-  registrationEndpoint: text('registration_endpoint').notNull(),
-  introspectionEndpoint: text('introspection_endpoint'),
-  revocationEndpoint: text('revocation_endpoint'),
-
-  // Supported capabilities
-  scopesSupported: text('scopes_supported').notNull().default('read,write'),
-  grantTypesSupported: text('grant_types_supported').notNull().default('authorization_code,refresh_token'),
-  responseTypesSupported: text('response_types_supported').notNull().default('code'),
-  codeChallengeMethodsSupported: text('code_challenge_methods_supported').notNull().default('S256'),
-
-  // Settings
-  accessTokenExpiration: integer('access_token_expiration').notNull().default(7200), // 2 hours
-  refreshTokenExpiration: integer('refresh_token_expiration').notNull().default(604800), // 7 days
-  requirePkce: boolean('require_pkce').notNull().default(true),
-  enabled: boolean('enabled').notNull().default(true),
-  allowRegistration: boolean('allow_registration').notNull().default(true),
-  requireEmailVerification: boolean('require_email_verification').notNull().default(false),
-
-  // Authentication methods
-  enablePasswordAuth: boolean('enable_password_auth').notNull().default(true),
-  enableGoogleAuth: boolean('enable_google_auth').notNull().default(true),
-  enableGithubAuth: boolean('enable_github_auth').notNull().default(true),
-
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+// MCP OAuth-specific tables (not business logic)
 
 // OAuth Clients (dynamically registered)
 export const mcpOauthClient = pgTable('mcp_oauth_client', {

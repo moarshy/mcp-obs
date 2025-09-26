@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { createMcpServerAction } from '@/lib/orpc/actions/mcp-servers'
-import { validateSlug } from '@/lib/actions/validate-slug'
+// import { validateSlug } from '@/lib/actions/validate-slug' // Temporarily disabled until we implement server action
 import { Server, ExternalLink, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface CreateMcpServerDialogProps {
@@ -45,12 +45,7 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
     name: '',
     slug: '',
     description: '',
-    enabled: true,
-    allowRegistration: true,
-    requireEmailVerification: false,
-    enablePasswordAuth: true,
-    enableGoogleAuth: true,
-    enableGithubAuth: true,
+    platformAuthEnabled: true, // Simple toggle for platform auth
   })
 
   const router = useRouter()
@@ -102,25 +97,35 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
       return
     }
 
-    console.log('Validating slug:', slug)
-    setSlugValidation({ isChecking: true, isAvailable: null, message: 'Checking availability...' })
+    // Simple client-side validation for now
+    setSlugValidation({ isChecking: true, isAvailable: null, message: 'Checking format...' })
 
-    try {
-      const result = await validateSlug(slug)
-      console.log('Validation result:', result)
-      setSlugValidation({
-        isChecking: false,
-        isAvailable: result.available,
-        message: result.message
-      })
-    } catch (error) {
-      console.error('Validation error:', error)
-      setSlugValidation({
-        isChecking: false,
-        isAvailable: false,
-        message: 'Error checking slug availability'
-      })
-    }
+    // Basic slug format validation
+    const isValidFormat = /^[a-z0-9-]+$/.test(slug) && slug.length >= 2 && slug.length <= 50
+    const reservedSlugs = ['www', 'api', 'admin', 'dashboard', 'app', 'mail', 'ftp', 'blog', 'help', 'support']
+    const isReserved = reservedSlugs.includes(slug.toLowerCase())
+
+    setTimeout(() => {
+      if (isReserved) {
+        setSlugValidation({
+          isChecking: false,
+          isAvailable: false,
+          message: 'This subdomain is reserved. Please choose a different one.'
+        })
+      } else if (!isValidFormat) {
+        setSlugValidation({
+          isChecking: false,
+          isAvailable: false,
+          message: 'Slug must contain only lowercase letters, numbers, and hyphens (2-50 characters)'
+        })
+      } else {
+        setSlugValidation({
+          isChecking: false,
+          isAvailable: true,
+          message: 'This subdomain looks good!'
+        })
+      }
+    }, 300)
   }
 
   const handleSlugChange = (value: string) => {
@@ -142,11 +147,7 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
         name: formData.name,
         slug: formData.slug,
         description: formData.description,
-        allowRegistration: formData.allowRegistration,
-        requireEmailVerification: formData.requireEmailVerification,
-        enablePasswordAuth: formData.enablePasswordAuth,
-        enableGoogleAuth: formData.enableGoogleAuth,
-        enableGithubAuth: formData.enableGithubAuth,
+        platformAuthEnabled: formData.platformAuthEnabled,
       })
 
       setOpen(false)
@@ -154,12 +155,7 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
         name: '',
         slug: '',
         description: '',
-        enabled: true,
-        allowRegistration: true,
-        requireEmailVerification: false,
-        enablePasswordAuth: true,
-        enableGoogleAuth: true,
-        enableGithubAuth: true,
+        platformAuthEnabled: true,
       })
       setSlugValidation({ isChecking: false, isAvailable: null, message: '' })
 
@@ -276,100 +272,27 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
 
           <Separator />
 
-          {/* Server Configuration */}
+          {/* Simple Auth Configuration */}
           <div className="space-y-4">
             <div>
-              <h4 className="text-sm font-medium mb-3">Server Configuration</h4>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enabled"
-                    checked={formData.enabled}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({ ...prev, enabled: checked === true }))
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="enabled" className="text-sm">
-                    Enable server (users can authenticate)
+              <h4 className="text-sm font-medium mb-3">Authentication</h4>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="platformAuthEnabled"
+                  checked={formData.platformAuthEnabled}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, platformAuthEnabled: checked === true }))
+                  }
+                  disabled={isLoading}
+                />
+                <div>
+                  <Label htmlFor="platformAuthEnabled" className="text-sm font-medium">
+                    Enable platform authentication
                   </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="allowRegistration"
-                    checked={formData.allowRegistration}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({ ...prev, allowRegistration: checked === true }))
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="allowRegistration" className="text-sm">
-                    Allow user registration (new users can sign up)
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="requireEmailVerification"
-                    checked={formData.requireEmailVerification}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({ ...prev, requireEmailVerification: checked === true }))
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="requireEmailVerification" className="text-sm">
-                    Require email verification
-                  </Label>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-medium mb-3">Authentication Methods</h4>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enablePasswordAuth"
-                    checked={formData.enablePasswordAuth}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({ ...prev, enablePasswordAuth: checked === true }))
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="enablePasswordAuth" className="text-sm">
-                    Email & Password authentication
-                  </Label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enableGoogleAuth"
-                    checked={formData.enableGoogleAuth}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({ ...prev, enableGoogleAuth: checked === true }))
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="enableGoogleAuth" className="text-sm">
-                    Google OAuth
-                  </Label>
-                  <Badge variant="secondary" className="text-xs">Recommended</Badge>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enableGithubAuth"
-                    checked={formData.enableGithubAuth}
-                    onCheckedChange={(checked) =>
-                      setFormData(prev => ({ ...prev, enableGithubAuth: checked === true }))
-                    }
-                    disabled={isLoading}
-                  />
-                  <Label htmlFor="enableGithubAuth" className="text-sm">
-                    GitHub OAuth
-                  </Label>
-                  <Badge variant="secondary" className="text-xs">Developer-friendly</Badge>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Provides OAuth authentication with Google, GitHub, and email/password.
+                    When disabled, your MCP server will be publicly accessible.
+                  </p>
                 </div>
               </div>
             </div>

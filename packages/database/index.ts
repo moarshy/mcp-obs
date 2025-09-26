@@ -3,10 +3,12 @@ import { drizzle } from 'drizzle-orm/node-postgres'
 import { Resource } from 'sst'
 import * as authSchema from './src/auth-schema'
 import * as mcpAuthSchema from './src/mcp-auth-schema'
+import * as businessSchema from './src/schema'
 
 export const schema = {
     ...authSchema,
-    ...mcpAuthSchema
+    ...mcpAuthSchema,
+    ...businessSchema
 }
 
 const pg = Resource.Postgres
@@ -16,3 +18,4 @@ export const db = drizzle(dbUrl, {
 })
 export * from './src/auth-schema'
 export * from './src/mcp-auth-schema'
+export * from './src/schema'
