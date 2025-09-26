@@ -127,10 +127,10 @@ export function generateMcpServerEndpoints(slug: string, baseUrl?: string) {
 
   return {
     issuerUrl,
-    authorizationEndpoint: `${issuerUrl}/oauth/authorize`,
-    tokenEndpoint: `${issuerUrl}/oauth/token`,
-    registrationEndpoint: `${issuerUrl}/oauth/register`,
-    introspectionEndpoint: `${issuerUrl}/oauth/introspect`,
-    revocationEndpoint: `${issuerUrl}/oauth/revoke`,
+    authorizationEndpoint: `${issuerUrl}/mcp-auth/oauth/authorize`,
+    tokenEndpoint: `${issuerUrl}/mcp-auth/oauth/token`,
+    registrationEndpoint: `${issuerUrl}/mcp-auth/oauth/register`,
+    introspectionEndpoint: `${issuerUrl}/mcp-auth/oauth/introspect`,
+    revocationEndpoint: `${issuerUrl}/mcp-auth/oauth/revoke`,
   }
 }

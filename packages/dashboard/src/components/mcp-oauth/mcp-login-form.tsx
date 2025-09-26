@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Server, Github } from 'lucide-react'
-import { createMCPAuth } from '@/lib/auth/mcp/auth'
+// Removed direct auth import - use API routes instead
 
 interface McpLoginFormProps {
   server: {
@@ -35,23 +35,16 @@ export function McpLoginForm({ server, authParams }: McpLoginFormProps) {
     setError('')
 
     try {
-      // Create MCP auth instance for this server
-      const mcpAuth = createMCPAuth(server.id, server.organizationId)
+      // TODO: Implement API-based authentication
+      // For now, show a placeholder message
+      setError('Email/password authentication not yet implemented')
 
-      // Attempt login
-      const result = await mcpAuth.signIn.email({
-        email,
-        password,
-        callbackURL: buildCallbackUrl()
-      })
+      // Future implementation:
+      // const response = await fetch('/api/auth/login', {
+      //   method: 'POST',
+      //   body: JSON.stringify({ email, password, serverId: server.id })
+      // })
 
-      if (result.error) {
-        setError(result.error.message || 'Login failed')
-      } else {
-        // Redirect to continue OAuth flow
-        const callbackUrl = buildCallbackUrl()
-        router.push(callbackUrl)
-      }
     } catch (err) {
       setError('An unexpected error occurred')
     } finally {
@@ -64,22 +57,15 @@ export function McpLoginForm({ server, authParams }: McpLoginFormProps) {
     setError('')
 
     try {
-      // Create MCP auth instance for this server
-      const mcpAuth = createMCPAuth(server.id, server.organizationId)
+      // TODO: Implement API-based social authentication
+      setError(`${provider} authentication not yet implemented`)
 
-      // Initiate social login
-      const result = await mcpAuth.signIn.social({
-        provider,
-        callbackURL: buildCallbackUrl()
-      })
+      // Future implementation:
+      // window.location.href = `/api/auth/social/${provider}?serverId=${server.id}`
 
-      if (result.error) {
-        setError(result.error.message || `${provider} login failed`)
-        setIsLoading(false)
-      }
-      // For social logins, the page will redirect automatically
     } catch (err) {
       setError('An unexpected error occurred')
+    } finally {
       setIsLoading(false)
     }
   }

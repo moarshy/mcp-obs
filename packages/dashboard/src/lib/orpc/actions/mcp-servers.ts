@@ -81,11 +81,11 @@ export const createMcpServerAction = base
         description: input.description,
         organizationId,
         issuerUrl,
-        authorizationEndpoint: `${issuerUrl}/oauth/authorize`,
-        tokenEndpoint: `${issuerUrl}/oauth/token`,
-        registrationEndpoint: `${issuerUrl}/oauth/register`,
-        introspectionEndpoint: `${issuerUrl}/oauth/introspect`,
-        revocationEndpoint: `${issuerUrl}/oauth/revoke`,
+        authorizationEndpoint: `${issuerUrl}/mcp-auth/oauth/authorize`,
+        tokenEndpoint: `${issuerUrl}/mcp-auth/oauth/token`,
+        registrationEndpoint: `${issuerUrl}/mcp-auth/oauth/register`,
+        introspectionEndpoint: `${issuerUrl}/mcp-auth/oauth/introspect`,
+        revocationEndpoint: `${issuerUrl}/mcp-auth/oauth/revoke`,
         // Default to sensible auth settings
         enabled: input.platformAuthEnabled,
         allowRegistration: input.platformAuthEnabled, // Only allow registration if auth is enabled
@@ -168,11 +168,11 @@ export const updateMcpServerAction = base
           ? `http://${input.slug}.localhost:3000`
           : `https://${input.slug}.mcp-obs.com`
         updateData.issuerUrl = issuerUrl
-        updateData.authorizationEndpoint = `${issuerUrl}/oauth/authorize`
-        updateData.tokenEndpoint = `${issuerUrl}/oauth/token`
-        updateData.registrationEndpoint = `${issuerUrl}/oauth/register`
-        updateData.introspectionEndpoint = `${issuerUrl}/oauth/introspect`
-        updateData.revocationEndpoint = `${issuerUrl}/oauth/revoke`
+        updateData.authorizationEndpoint = `${issuerUrl}/mcp-auth/oauth/authorize`
+        updateData.tokenEndpoint = `${issuerUrl}/mcp-auth/oauth/token`
+        updateData.registrationEndpoint = `${issuerUrl}/mcp-auth/oauth/register`
+        updateData.introspectionEndpoint = `${issuerUrl}/mcp-auth/oauth/introspect`
+        updateData.revocationEndpoint = `${issuerUrl}/mcp-auth/oauth/revoke`
       }
 
       const result = await db
