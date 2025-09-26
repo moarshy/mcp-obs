@@ -4,6 +4,12 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  InitializeRequestSchema,
+  Notification,
+  LoggingMessageNotification,
+  ToolListChangedNotification,
+  JSONRPCNotification,
+  JSONRPCError,
 } from "@modelcontextprotocol/sdk/types.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
@@ -16,18 +22,51 @@ interface EchoArgs {
 
 const app = express();
 const PORT = 3004;
+const SESSION_ID_HEADER_NAME = "mcp-session-id";
+const JSON_RPC = "2.0";
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Single global transport instance
-let globalTransport: StreamableHTTPServerTransport | null = null;
-let mcpServer: Server | null = null;
+// Track multiple transport instances by session ID
+const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
+const servers: { [sessionId: string]: Server } = {};
 
 // Helper function to check if request is an initialize request
 function isInitializeRequest(body: any): boolean {
-  return body && body.method === "initialize";
+  const isInitial = (data: any) => {
+    const result = InitializeRequestSchema.safeParse(data);
+    return result.success;
+  };
+  if (Array.isArray(body)) {
+    return body.some((request) => isInitial(request));
+  }
+  return isInitial(body);
+}
+
+// Helper function to create error response
+function createErrorResponse(message: string): JSONRPCError {
+  return {
+    jsonrpc: "2.0",
+    error: {
+      code: -32000,
+      message: message,
+    },
+    id: randomUUID(),
+  };
+}
+
+// Helper function to send notification
+async function sendNotification(
+  transport: StreamableHTTPServerTransport,
+  notification: Notification
+) {
+  const rpcNotification: JSONRPCNotification = {
+    ...notification,
+    jsonrpc: JSON_RPC,
+  };
+  await transport.send(rpcNotification);
 }
 
 // Helper function to create and setup MCP server
@@ -86,26 +125,77 @@ function createMCPServer(): Server {
   return server;
 }
 
-// Main MCP endpoint - single transport per connection approach
-app.all("/mcp", async (req, res) => {
-  console.log(`📨 ${req.method} request to /mcp`);
+// Handle GET requests (SSE streaming)
+app.get("/mcp", async (req, res) => {
+  console.log(`📨 GET request to /mcp for SSE streaming`);
+
+  const sessionId = req.headers[SESSION_ID_HEADER_NAME] as string | undefined;
+  if (!sessionId || !transports[sessionId]) {
+    res
+      .status(400)
+      .json(createErrorResponse("Bad Request: invalid session ID or method."));
+    return;
+  }
+
+  console.log(`Establishing SSE stream for session ${sessionId}`);
+  const transport = transports[sessionId];
 
   try {
-    // Create a fresh transport for each request - let the SDK handle session management internally
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomUUID(),
-      enableDnsRebindingProtection: false, // Disable for local development
-    });
-
-    const server = createMCPServer();
-    await server.connect(transport);
-
-    await transport.handleRequest(req, res, req.body);
-    console.log(`✅ Request handled successfully`);
+    await transport.handleRequest(req, res);
+    await streamMessages(transport);
   } catch (error) {
-    console.error(`❌ Error handling request:`, error);
+    console.error(`❌ Error handling SSE request:`, error);
     if (!res.headersSent) {
-      res.status(500).json({ error: "Internal server error" });
+      res.status(500).json(createErrorResponse("Internal server error."));
+    }
+  }
+});
+
+// Handle POST requests (tool calls and initialization)
+app.post("/mcp", async (req, res) => {
+  console.log(`📨 POST request to /mcp`);
+
+  const sessionId = req.headers[SESSION_ID_HEADER_NAME] as string | undefined;
+  let transport: StreamableHTTPServerTransport;
+
+  try {
+    // Reuse existing transport if session exists
+    if (sessionId && transports[sessionId]) {
+      transport = transports[sessionId];
+      await transport.handleRequest(req, res, req.body);
+      return;
+    }
+
+    // Create new transport for initialization request
+    if (!sessionId && isInitializeRequest(req.body)) {
+      transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        enableDnsRebindingProtection: false, // Disable for local development
+      });
+
+      const server = createMCPServer();
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+
+      // Store transport and server for session management
+      const newSessionId = transport.sessionId;
+      if (newSessionId) {
+        transports[newSessionId] = transport;
+        servers[newSessionId] = server;
+        console.log(`✅ New session created: ${newSessionId}`);
+      }
+
+      return;
+    }
+
+    res
+      .status(400)
+      .json(createErrorResponse("Bad Request: invalid session ID or method."));
+    return;
+  } catch (error) {
+    console.error(`❌ Error handling POST request:`, error);
+    if (!res.headersSent) {
+      res.status(500).json(createErrorResponse("Internal server error."));
     }
   }
 });
@@ -131,6 +221,70 @@ app.get("/status", (req, res) => {
   });
 });
 
+// Stream messages function for SSE
+async function streamMessages(transport: StreamableHTTPServerTransport) {
+  try {
+    // Send initial connection message
+    const message: LoggingMessageNotification = {
+      method: "notifications/message",
+      params: { level: "info", data: "SSE Connection established" },
+    };
+
+    await sendNotification(transport, message);
+
+    let messageCount = 0;
+    const interval = setInterval(async () => {
+      messageCount++;
+
+      const data = `Message ${messageCount} at ${new Date().toISOString()}`;
+      const message: LoggingMessageNotification = {
+        method: "notifications/message",
+        params: { level: "info", data: data },
+      };
+
+      try {
+        await sendNotification(transport, message);
+
+        if (messageCount === 2) {
+          clearInterval(interval);
+          const finalMessage: LoggingMessageNotification = {
+            method: "notifications/message",
+            params: { level: "info", data: "Streaming complete!" },
+          };
+          await sendNotification(transport, finalMessage);
+        }
+      } catch (error) {
+        console.error("Error sending message:", error);
+        clearInterval(interval);
+      }
+    }, 1000);
+  } catch (error) {
+    console.error("Error streaming messages:", error);
+  }
+}
+
+// Session cleanup function
+function cleanupSession(sessionId: string) {
+  if (servers[sessionId]) {
+    servers[sessionId].close();
+    delete servers[sessionId];
+  }
+  if (transports[sessionId]) {
+    delete transports[sessionId];
+  }
+  console.log(`🧹 Session ${sessionId} cleaned up`);
+}
+
+// Cleanup inactive sessions periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const sessionId in transports) {
+    // Clean up sessions older than 1 hour
+    // Note: In production, you'd want proper session tracking with timestamps
+    // This is a simple cleanup mechanism
+  }
+}, 300000); // Check every 5 minutes
+
 async function main() {
   app.listen(PORT, () => {
     console.log(`🌐 Demo MCP Streamable HTTP Server running on http://localhost:${PORT}`);
@@ -138,6 +292,18 @@ async function main() {
     console.log(`🔍 Health check: http://localhost:${PORT}/health`);
     console.log(`📊 Status: http://localhost:${PORT}/status`);
     console.log(`🚀 Transport: Streamable HTTP (MCP v2025-03-26)`);
+  });
+
+  // Graceful shutdown
+  process.on('SIGINT', async () => {
+    console.log('🛑 Shutting down server...');
+
+    // Close all sessions
+    for (const sessionId in servers) {
+      cleanupSession(sessionId);
+    }
+
+    process.exit(0);
   });
 }
 

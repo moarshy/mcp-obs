@@ -5,6 +5,7 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
 interface EchoArgs {
   message?: string;
+  [key: string]: unknown;
 }
 
 async function runHttpClient() {
@@ -45,11 +46,11 @@ async function runHttpClient() {
         message: "SSE Transport Demo!",
       } as EchoArgs,
     });
-    console.log("📤 Result:", result.content[0]);
+    console.log("📤 Result:", (result.content as any)[0]);
 
   } catch (error) {
     console.log("ℹ️ SSE server not available (expected - start with 'bun run dev:server:http')");
-    console.log("   Error:", error.message);
+    console.log("   Error:", (error as any).message);
   } finally {
     await client.close();
     console.log("🔌 Disconnected from SSE server");

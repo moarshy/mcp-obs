@@ -5,6 +5,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 
 interface EchoArgs {
   message?: string;
+  [key: string]: unknown;
 }
 
 async function runStreamableHttpClient() {
@@ -49,7 +50,7 @@ async function runStreamableHttpClient() {
       name: "echo",
       arguments: {},
     });
-    console.log("📤 Result:", result1.content[0]);
+    console.log("📤 Result:", (result1.content as any)[0]);
 
     // Call the echo tool with custom message
     console.log("🔧 Calling echo tool with custom message...");
@@ -59,7 +60,7 @@ async function runStreamableHttpClient() {
         message: "Streamable HTTP is working great!",
       } as EchoArgs,
     });
-    console.log("📤 Result:", result2.content[0]);
+    console.log("📤 Result:", (result2.content as any)[0]);
 
     // Test multiple rapid calls to verify session management
     console.log("🔧 Testing rapid calls for session management...");
@@ -79,7 +80,7 @@ async function runStreamableHttpClient() {
     ]);
 
     rapidCalls.forEach((result, index) => {
-      console.log(`📤 Rapid call ${index + 1}:`, result.content[0]);
+      console.log(`📤 Rapid call ${index + 1}:`, (result.content as any)[0]);
     });
 
   } catch (error) {

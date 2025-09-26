@@ -10,6 +10,7 @@ const __dirname = path.dirname(__filename);
 
 interface EchoArgs {
   message?: string;
+  [key: string]: unknown;
 }
 
 async function runStdioClient() {
@@ -49,7 +50,7 @@ async function runStdioClient() {
       name: "echo",
       arguments: {},
     });
-    console.log("📤 Result:", result1.content[0]);
+    console.log("📤 Result:", (result1.content as any)[0]);
 
     // Call the echo tool with custom message
     console.log("🔧 Calling echo tool with custom message...");
@@ -59,7 +60,7 @@ async function runStdioClient() {
         message: "TypeScript MCP Demo is working!",
       } as EchoArgs,
     });
-    console.log("📤 Result:", result2.content[0]);
+    console.log("📤 Result:", (result2.content as any)[0]);
 
   } catch (error) {
     console.error("❌ Client error:", error);
