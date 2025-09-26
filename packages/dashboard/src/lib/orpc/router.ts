@@ -1,11 +1,11 @@
 import { os } from '@orpc/server'
-import { authProcedures } from './procedures/auth'
-import { mcpProcedures } from './procedures/mcp'
 
-// Create main router with all procedures
-export const appRouter = os({
-  auth: authProcedures,
-  mcp: mcpProcedures,
+// Base router with error definitions (following MCPlatform pattern)
+export const base = os.errors({
+  UNAUTHORIZED: {},
+  RESOURCE_NOT_FOUND: {},
+  INVALID_SUBDOMAIN: {},
+  SUBDOMAIN_ALREADY_EXISTS: {},
+  ORGANIZATION_NOT_FOUND: {},
+  INSUFFICIENT_PERMISSIONS: {},
 })
-
-export type AppRouter = typeof appRouter
