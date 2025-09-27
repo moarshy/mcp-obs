@@ -1,13 +1,15 @@
 {
-    "name": "server-sdk",
+    "name": "@mcp-obs/server-sdk",
     "module": "index.ts",
+    "main": "index.ts",
+    "types": "index.ts",
     "type": "module",
     "version": "0.1.0",
-    "description": "mcp-obs Server SDK for MCP server integration",
-    "keywords": ["mcp", "server", "sdk", "mcp-obs"],
+    "description": "mcp-obs Server SDK for MCP server integration with OAuth support",
+    "keywords": ["mcp", "server", "sdk", "mcp-obs", "oauth"],
     "dependencies": {
-        "database": "workspace:*",
-        "zod": "^3.25.50"
+        "zod": "^3.25.50",
+        "@modelcontextprotocol/sdk": "^1.18.1"
     },
     "devDependencies": {
         "@types/bun": "^1.2.18",
@@ -16,5 +18,15 @@
     "peerDependencies": {
         "typescript": "^5"
     },
-    "private": true
+    "exports": {
+        ".": "./index.ts",
+        "./oauth-validator": "./src/oauth-validator.ts",
+        "./oauth-middleware": "./src/oauth-middleware.ts",
+        "./transport-adapters": "./src/transport-adapters.ts"
+    },
+    "files": [
+        "index.ts",
+        "src/",
+        "README.md"
+    ]
 }
