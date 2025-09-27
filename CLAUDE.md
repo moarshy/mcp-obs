@@ -76,15 +76,23 @@ bun run db:migrate    # Run migrations
 - Monorepo structure with Bun workspace
 - Next.js 15 dashboard with App Router
 - Database package with Drizzle ORM
-- Server SDK and Client SDK packages
+- TypeScript and Python SDKs with OAuth functionality
 - SST configuration for AWS deployment
 - Development tooling (ESLint, TypeScript)
+
+✅ SDK IMPLEMENTATION COMPLETE
+- TypeScript mcp-server SDK with OAuth middleware
+- Python mcp-server SDK with full OAuth feature parity
+- Transport adapters (stdio, HTTP, streamable HTTP)
+- FastAPI and Flask integration support
+- Comprehensive documentation and examples
 
 🚧 IMPLEMENTATION NEEDED
 - Better Auth integration (dual auth system)
 - oRPC setup for type-safe APIs
 - shadcn/ui components and theming
 - Business logic and features per specifications
+- Platform SDKs (TypeScript/Python client libraries)
 ```
 
 ## Project Structure
@@ -122,20 +130,31 @@ mcp-obs/
 │   │   │   └── index.ts                        # ✅ Package exports
 │   │   ├── dist/                               # ✅ Compiled TypeScript
 │   │   └── tsconfig.json                       # ✅ TypeScript config
-│   ├── server-sdk/          # mcp-obs Server SDK
-│   │   ├── src/
-│   │   │   ├── index.ts                        # ✅ Main SDK interface
-│   │   │   ├── auth-middleware.ts              # 🚧 Auth integration for MCP servers
-│   │   │   ├── telemetry.ts                    # 🚧 OpenTelemetry instrumentation
-│   │   │   └── types.ts                        # 🚧 TypeScript definitions
-│   │   └── dist/                               # ✅ Compiled TypeScript
-│   └── client-sdk/          # mcp-obs Client SDK
-│       ├── src/
-│       │   ├── index.ts                        # ✅ Main client interface
-│       │   ├── oauth-client.ts                 # 🚧 OAuth handling for MCP clients
-│       │   ├── session-manager.ts              # 🚧 Session management
-│       │   └── types.ts                        # 🚧 TypeScript definitions
-│       └── dist/                               # ✅ Compiled TypeScript
+│   └── sdk/                 # mcp-obs SDKs (multi-language support)
+│       ├── typescript/      # TypeScript SDK packages
+│       │   ├── mcp-server/  # OAuth middleware for MCP servers
+│       │   │   ├── src/
+│       │   │   │   ├── oauth-middleware.ts     # ✅ OAuth decorators and middleware
+│       │   │   │   ├── oauth-validator.ts      # ✅ HTTP token validation
+│       │   │   │   └── transport-adapters.ts   # ✅ Transport-specific adapters
+│       │   │   ├── package.json                # ✅ NPM package configuration
+│       │   │   └── dist/                       # ✅ Compiled TypeScript
+│       │   └── platform/    # Platform API client
+│       │       ├── src/
+│       │       │   └── index.ts                # ✅ Basic platform client
+│       │       └── package.json                # ✅ NPM package configuration
+│       └── python/          # Python SDK packages
+│           ├── mcp-server/  # OAuth middleware for MCP servers
+│           │   ├── src/mcp_obs_server/
+│           │   │   ├── __init__.py             # ✅ Package exports
+│           │   │   ├── types.py                # ✅ Pydantic type definitions
+│           │   │   ├── oauth_validator.py      # ✅ HTTP token validation
+│           │   │   ├── oauth_middleware.py     # ✅ OAuth decorators
+│           │   │   └── transport_adapters.py   # ✅ FastAPI/Flask integration
+│           │   ├── pyproject.toml              # ✅ UV package configuration
+│           │   └── README.md                   # ✅ Comprehensive documentation
+│           └── platform/    # Platform API client (future)
+│               └── pyproject.toml              # 🚧 Python platform client
 ├── docs/
 │   └── 0.prd.md             # Product Requirements Document
 ├── specifications/
@@ -204,9 +223,10 @@ AWS_REGION=us-east-1
 - **Domain Configuration**: Custom domains and subdomain management
 
 #### SDK Implementation
-- **Server SDK**: `packages/server-sdk/src/` - Auth middleware, telemetry for MCP servers
-- **Client SDK**: `packages/client-sdk/src/` - OAuth handling, session management for MCP clients
-- **Types**: Shared TypeScript definitions in both SDKs
+- **TypeScript mcp-server SDK**: `packages/sdk/typescript/mcp-server/src/` - OAuth middleware and transport adapters
+- **Python mcp-server SDK**: `packages/sdk/python/mcp-server/src/mcp_obs_server/` - Full-featured Python OAuth integration
+- **Platform SDKs**: `packages/sdk/{typescript,python}/platform/` - API clients for mcp-obs platform
+- **Multi-language Support**: Consistent APIs across TypeScript and Python implementations
 
 #### OpenTelemetry Integration
 - **Instrumentation**: `packages/server-sdk/src/telemetry.ts` - OTEL setup for MCP servers
