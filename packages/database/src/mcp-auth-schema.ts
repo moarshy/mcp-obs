@@ -1,7 +1,74 @@
-import { boolean, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { boolean, integer, pgTable, text, timestamp, uuid, bigint, jsonb } from 'drizzle-orm/pg-core'
 import { mcpServer } from './schema'
 
-// MCP OAuth-specific tables (not business logic)
+// MCP OAuth-specific tables following MCPlatform user capture pattern
+
+// MCP Server Users (distinct from platform/dashboard users)
+// This is the core user capture table for analytics and deduplication
+export const mcpServerUser = pgTable('mcp_server_user', {
+  id: text('id').primaryKey().$defaultFn(() => `mcpu_${Math.random().toString(36).slice(2, 14)}`),
+  trackingId: text('tracking_id').unique().$defaultFn(() => Math.random().toString(36).slice(2, 18)),
+
+  // OAuth Provider Data
+  email: text('email'),
+  upstreamSub: text('upstream_sub'), // OAuth provider's sub claim
+  profileData: jsonb('profile_data'), // Full OAuth profile response
+
+  // Timestamps
+  firstSeenAt: bigint('first_seen_at', { mode: 'number' }).$defaultFn(() => Date.now()),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Links users to their OAuth tokens across providers
+export const upstreamOAuthTokens = pgTable('upstream_oauth_tokens', {
+  id: text('id').primaryKey().$defaultFn(() => `uot_${Math.random().toString(36).slice(2, 14)}`),
+  mcpServerUserId: text('mcp_server_user_id').notNull().references(() => mcpServerUser.id, { onDelete: 'cascade' }),
+  oauthConfigId: text('oauth_config_id').notNull(), // Links to OAuth provider config
+
+  // Encrypted tokens (TODO: Implement encryption in production)
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  expiresAt: bigint('expires_at', { mode: 'number' }),
+
+  // Timestamps
+  createdAt: bigint('created_at', { mode: 'number' }).$defaultFn(() => Date.now()),
+  updatedAt: bigint('updated_at', { mode: 'number' }).$defaultFn(() => Date.now()),
+})
+
+// MCP Server Sessions link users to specific servers
+export const mcpServerSession = pgTable('mcp_server_session', {
+  mcpServerSessionId: text('mcp_server_session_id').primaryKey().$defaultFn(() => `mcps_${Math.random().toString(36).slice(2, 14)}`),
+  mcpServerSlug: text('mcp_server_slug').notNull(),
+  mcpServerUserId: text('mcp_server_user_id').notNull().references(() => mcpServerUser.id, { onDelete: 'cascade' }),
+
+  // Session metadata
+  sessionData: jsonb('session_data'),
+  connectionDate: timestamp('connection_date', { mode: 'date' }).defaultNow(),
+  connectionTimestamp: bigint('connection_timestamp', { mode: 'number' }).$defaultFn(() => Date.now()),
+  expiresAt: bigint('expires_at', { mode: 'number' }),
+  revokedAt: bigint('revoked_at', { mode: 'number' }),
+})
+
+// Analytics tables that reference captured users
+export const mcpToolCalls = pgTable('mcp_tool_calls', {
+  id: text('id').primaryKey().$defaultFn(() => `mtc_${Math.random().toString(36).slice(2, 14)}`),
+  mcpServerUserId: text('mcp_server_user_id').notNull().references(() => mcpServerUser.id, { onDelete: 'cascade' }),
+  mcpServerSlug: text('mcp_server_slug').notNull(),
+
+  // Tool execution data
+  toolName: text('tool_name').notNull(),
+  input: jsonb('input'),
+  output: jsonb('output'),
+  executionTimeMs: integer('execution_time_ms'),
+  success: boolean('success'),
+  errorMessage: text('error_message'),
+
+  createdAt: bigint('created_at', { mode: 'number' }).$defaultFn(() => Date.now()),
+})
+
+
+// Original OAuth tables (keeping existing structure but updating references)
 
 // OAuth Clients (dynamically registered)
 export const mcpOauthClient = pgTable('mcp_oauth_client', {
@@ -30,13 +97,13 @@ export const mcpOauthClient = pgTable('mcp_oauth_client', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-// End Users (per MCP server context)
+// End Users (Better Auth compatible - no server constraints)
 export const mcpEndUser = pgTable('mcp_end_user', {
   id: uuid('id').defaultRandom().primaryKey(),
-  mcpServerId: uuid('mcp_server_id').notNull().references(() => mcpServer.id, { onDelete: 'cascade' }),
+  // NO mcp_server_id constraint - server context handled in sessions
 
-  // User Identity
-  email: text('email').notNull(),
+  // User Identity (nullable for Better Auth compatibility)
+  email: text('email'),
   emailVerified: boolean('email_verified').notNull().default(false),
   name: text('name'),
   image: text('image'),
@@ -115,6 +182,18 @@ export const mcpOauthCode = pgTable('mcp_oauth_code', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
+// Type exports for user capture system
+export type McpServerUser = typeof mcpServerUser.$inferSelect
+export type UpstreamOAuthToken = typeof upstreamOAuthTokens.$inferSelect
+export type McpServerSession = typeof mcpServerSession.$inferSelect
+export type McpToolCall = typeof mcpToolCalls.$inferSelect
+
+export type NewMcpServerUser = typeof mcpServerUser.$inferInsert
+export type NewUpstreamOAuthToken = typeof upstreamOAuthTokens.$inferInsert
+export type NewMcpServerSession = typeof mcpServerSession.$inferInsert
+export type NewMcpToolCall = typeof mcpToolCalls.$inferInsert
+
+// Type exports for OAuth system
 export type McpServer = typeof mcpServer.$inferSelect
 export type McpOauthClient = typeof mcpOauthClient.$inferSelect
 export type McpEndUser = typeof mcpEndUser.$inferSelect
