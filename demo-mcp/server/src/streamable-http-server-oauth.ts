@@ -42,8 +42,6 @@ let oauthAdapter: any;
 
 // Middleware - keep it simple like the working streamable server
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // For OAuth form data
 
 // Track multiple transport instances by session ID
 const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
@@ -287,6 +285,12 @@ async function main() {
     const authContext = (req as any).authContext as AuthContext;
     let transport: StreamableHTTPServerTransport;
 
+    // Debug logging
+    console.log(`🔍 [DEBUG] Session ID: ${sessionId}`);
+    console.log(`🔍 [DEBUG] Available sessions:`, Object.keys(transports));
+    console.log(`🔍 [DEBUG] Request method:`, req.body?.method);
+    console.log(`🔍 [DEBUG] Is initialize request:`, isInitializeRequest(req.body));
+
     try {
       // Reuse existing transport if session exists
       if (sessionId && transports[sessionId]) {
@@ -297,10 +301,63 @@ async function main() {
           sessionAuthContexts[sessionId] = authContext;
         }
 
-        // Pass the request through normally
-        const authenticatedRequest = req.body;
+        // Handle existing session with proper stream recreation
+        if ((req as any)._mcpOAuthBufferedBody) {
+          console.log('🔄 Recreating stream for existing session');
 
-        await transport.handleRequest(req, res, authenticatedRequest);
+          const { Readable } = require('stream');
+          const bufferedBody = (req as any)._mcpOAuthBufferedBody;
+
+          // Create a proper readable stream that extends Node.js Readable
+          class BufferedRequestStream extends Readable {
+            private bodyPushed = false;
+
+            _read() {
+              if (!this.bodyPushed) {
+                this.push(bufferedBody);
+                this.push(null); // End the stream
+                this.bodyPushed = true;
+              }
+            }
+          }
+
+          const bodyStream = new BufferedRequestStream();
+          const streamableReq = Object.create(req);
+
+          // Copy all stream-related methods and properties from the new stream
+          streamableReq.on = bodyStream.on.bind(bodyStream);
+          streamableReq.emit = bodyStream.emit.bind(bodyStream);
+          streamableReq.pipe = bodyStream.pipe.bind(bodyStream);
+          streamableReq.read = bodyStream.read.bind(bodyStream);
+          streamableReq.pause = bodyStream.pause.bind(bodyStream);
+          streamableReq.resume = bodyStream.resume.bind(bodyStream);
+          streamableReq.isPaused = bodyStream.isPaused.bind(bodyStream);
+          streamableReq.unpipe = bodyStream.unpipe.bind(bodyStream);
+          streamableReq.unshift = bodyStream.unshift.bind(bodyStream);
+          streamableReq.wrap = bodyStream.wrap.bind(bodyStream);
+          streamableReq.destroy = bodyStream.destroy.bind(bodyStream);
+          streamableReq.addListener = bodyStream.addListener.bind(bodyStream);
+          streamableReq.removeListener = bodyStream.removeListener.bind(bodyStream);
+          streamableReq.removeAllListeners = bodyStream.removeAllListeners.bind(bodyStream);
+          streamableReq.setMaxListeners = bodyStream.setMaxListeners.bind(bodyStream);
+          streamableReq.getMaxListeners = bodyStream.getMaxListeners.bind(bodyStream);
+          streamableReq.listeners = bodyStream.listeners.bind(bodyStream);
+          streamableReq.rawListeners = bodyStream.rawListeners.bind(bodyStream);
+          streamableReq.listenerCount = bodyStream.listenerCount.bind(bodyStream);
+          streamableReq.prependListener = bodyStream.prependListener.bind(bodyStream);
+          streamableReq.prependOnceListener = bodyStream.prependOnceListener.bind(bodyStream);
+          streamableReq.eventNames = bodyStream.eventNames.bind(bodyStream);
+
+          // Set stream properties using defineProperty to avoid readonly conflicts
+          Object.defineProperty(streamableReq, 'readable', { value: true, writable: false });
+          Object.defineProperty(streamableReq, 'readableEnded', { value: false, writable: false });
+          Object.defineProperty(streamableReq, 'destroyed', { value: false, writable: false });
+
+          await transport.handleRequest(streamableReq, res, req.body);
+        } else {
+          // Fallback for cases without buffered body
+          await transport.handleRequest(req, res, req.body);
+        }
         return;
       }
 
@@ -309,23 +366,90 @@ async function main() {
         transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           enableDnsRebindingProtection: false, // Disable for local development
+          onsessioninitialized: (sessionId: string) => {
+            // This callback is called when the session is properly initialized by the transport
+            console.log(`✅ OAuth session initialized: ${sessionId} for user: ${authContext?.user?.email || 'unknown'}`);
+            // Store the transport and auth context for this session
+            transports[sessionId] = transport;
+            sessionAuthContexts[sessionId] = authContext;
+            // Update server reference with correct session ID if needed
+            const tempSessionId = transport.sessionId;
+            if (tempSessionId && servers[tempSessionId] && tempSessionId !== sessionId) {
+              servers[sessionId] = servers[tempSessionId];
+              delete servers[tempSessionId];
+            }
+          }
         });
 
-        const newSessionId = transport.sessionId || randomUUID();
-        const server = createMCPServer(newSessionId);
+        const tempSessionId = transport.sessionId || randomUUID();
+        const server = createMCPServer(tempSessionId);
+        servers[tempSessionId] = server;
         await server.connect(transport);
 
-        // Handle the request without modifying the JSON-RPC body
-        // The authContext is already available in the session store
-        await transport.handleRequest(req, res);
+        // Handle the request with stream recreation from buffered body
+        // The OAuth middleware has consumed the stream and buffered the body
+        if ((req as any)._mcpOAuthBufferedBody) {
+          console.log('🔄 Recreating stream from buffered body for StreamableHTTPTransport');
 
-        // Store transport, server, and auth context for session management
-        if (newSessionId) {
-          transports[newSessionId] = transport;
-          servers[newSessionId] = server;
-          sessionAuthContexts[newSessionId] = authContext;
-          console.log(`✅ New OAuth session created: ${newSessionId} for user: ${authContext.email}`);
+          const { Readable } = require('stream');
+          const bufferedBody = (req as any)._mcpOAuthBufferedBody;
+
+          // Create a proper readable stream that extends Node.js Readable
+          // This ensures all EventEmitter methods (like removeListener) are available
+          class BufferedRequestStream extends Readable {
+            private bodyPushed = false;
+
+            _read() {
+              if (!this.bodyPushed) {
+                this.push(bufferedBody);
+                this.push(null); // End the stream
+                this.bodyPushed = true;
+              }
+            }
+          }
+
+          const bodyStream = new BufferedRequestStream();
+
+          // Create a new request object that properly mimics the original Express request
+          // but with the reconstructed readable stream
+          const streamableReq = Object.create(req);
+
+          // Copy all stream-related methods and properties from the new stream
+          streamableReq.on = bodyStream.on.bind(bodyStream);
+          streamableReq.emit = bodyStream.emit.bind(bodyStream);
+          streamableReq.pipe = bodyStream.pipe.bind(bodyStream);
+          streamableReq.read = bodyStream.read.bind(bodyStream);
+          streamableReq.pause = bodyStream.pause.bind(bodyStream);
+          streamableReq.resume = bodyStream.resume.bind(bodyStream);
+          streamableReq.isPaused = bodyStream.isPaused.bind(bodyStream);
+          streamableReq.unpipe = bodyStream.unpipe.bind(bodyStream);
+          streamableReq.unshift = bodyStream.unshift.bind(bodyStream);
+          streamableReq.wrap = bodyStream.wrap.bind(bodyStream);
+          streamableReq.destroy = bodyStream.destroy.bind(bodyStream);
+          streamableReq.addListener = bodyStream.addListener.bind(bodyStream);
+          streamableReq.removeListener = bodyStream.removeListener.bind(bodyStream);
+          streamableReq.removeAllListeners = bodyStream.removeAllListeners.bind(bodyStream);
+          streamableReq.setMaxListeners = bodyStream.setMaxListeners.bind(bodyStream);
+          streamableReq.getMaxListeners = bodyStream.getMaxListeners.bind(bodyStream);
+          streamableReq.listeners = bodyStream.listeners.bind(bodyStream);
+          streamableReq.rawListeners = bodyStream.rawListeners.bind(bodyStream);
+          streamableReq.listenerCount = bodyStream.listenerCount.bind(bodyStream);
+          streamableReq.prependListener = bodyStream.prependListener.bind(bodyStream);
+          streamableReq.prependOnceListener = bodyStream.prependOnceListener.bind(bodyStream);
+          streamableReq.eventNames = bodyStream.eventNames.bind(bodyStream);
+
+          // Set stream properties using defineProperty to avoid readonly conflicts
+          Object.defineProperty(streamableReq, 'readable', { value: true, writable: false });
+          Object.defineProperty(streamableReq, 'readableEnded', { value: false, writable: false });
+          Object.defineProperty(streamableReq, 'destroyed', { value: false, writable: false });
+
+          await transport.handleRequest(streamableReq, res);
+        } else {
+          // Fallback for cases without buffered body
+          await transport.handleRequest(req, res);
         }
+
+        // Session management is now handled by the onsessioninitialized callback
 
         return;
       }
@@ -377,7 +501,13 @@ async function main() {
   });
 
   // Create OAuth proxy endpoints from SDK for MCP client compatibility
-  oauthAdapter.createOAuthProxyEndpoints(app);
+  console.log('🔧 Creating OAuth proxy endpoints...');
+  if (oauthAdapter && typeof oauthAdapter.createOAuthProxyEndpoints === 'function') {
+    oauthAdapter.createOAuthProxyEndpoints(app);
+    console.log('✅ OAuth proxy endpoints created');
+  } else {
+    console.error('❌ OAuth adapter not available or missing createOAuthProxyEndpoints method');
+  }
 
   app.listen(PORT, () => {
     console.log(`🌐 Demo MCP OAuth Streamable HTTP Server running on http://localhost:${PORT}`);

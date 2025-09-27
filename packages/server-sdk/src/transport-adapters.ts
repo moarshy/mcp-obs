@@ -257,7 +257,71 @@ export class StreamableHTTPOAuthAdapter {
     return async (req: any, res: any, next: any) => {
       // Skip OAuth for health checks and public endpoints
       if (self.isPublicEndpoint(req.path)) {
+        if (self.config.debug) {
+          console.log(`[OAuth Express] Skipping OAuth for public endpoint: ${req.path}`);
+        }
         return next();
+      }
+
+      // Handle body buffering for POST requests (MCP session initialization)
+      // This preserves streams while enabling session logic - ALL COMPLEXITY IN SDK!
+      // Only buffer body for MCP endpoints (not public OAuth proxy endpoints)
+      if (req.method === 'POST') {
+        console.log('[OAuth Express] Buffering body for MCP session logic');
+
+        try {
+          // Buffer the entire request body
+          const chunks: Buffer[] = [];
+          let totalLength = 0;
+
+          // Create a promise to buffer the body
+          const bodyPromise = new Promise<Buffer>((resolve, reject) => {
+            req.on('data', (chunk: Buffer) => {
+              chunks.push(chunk);
+              totalLength += chunk.length;
+            });
+
+            req.on('end', () => {
+              resolve(Buffer.concat(chunks, totalLength));
+            });
+
+            req.on('error', reject);
+
+            // Set a timeout to prevent hanging
+            setTimeout(() => reject(new Error('Body buffering timeout')), 10000);
+          });
+
+          const bodyBuffer = await bodyPromise;
+
+          // Parse JSON body for session logic
+          if (bodyBuffer.length > 0) {
+            const bodyText = bodyBuffer.toString('utf8');
+            req.body = JSON.parse(bodyText);
+            console.log('[OAuth Express] Parsed body for session logic');
+          } else {
+            req.body = {};
+            console.log('[OAuth Express] Empty body, using empty object');
+          }
+
+          // Store the buffered body for the server to recreate streams as needed
+          // This approach doesn't modify Express request properties
+          (req as any)._mcpOAuthBufferedBody = bodyBuffer;
+          (req as any)._mcpOAuthBodyParsed = true;
+
+          console.log('[OAuth Express] Body buffered successfully, size:', bodyBuffer.length);
+
+        } catch (bufferError) {
+          console.error('[OAuth Express] Body buffering error:', bufferError);
+          req.body = {};
+          return res.status(400).json({
+            jsonrpc: '2.0',
+            error: {
+              code: -32700,
+              message: 'Parse error: Invalid JSON in request body'
+            },
+            id: null
+          });
+        }
       }
 
       const token = self.extractTokenFromExpress(req);
@@ -372,6 +436,8 @@ export class StreamableHTTPOAuthAdapter {
    * Call this to add /register, /token, and /authorize endpoints to your Express app
    */
   createOAuthProxyEndpoints(app: any) {
+    console.log('🚀 [OAuth Proxy] createOAuthProxyEndpoints called');
+    console.log('🔧 [OAuth Proxy] Config:', { platformUrl: this.config.platformUrl, serverSlug: this.config.serverSlug });
     // Construct proper OAuth server URL with subdomain for server slug
     let platformUrl: string;
     if (this.config.platformUrl && this.config.serverSlug) {
@@ -393,80 +459,88 @@ export class StreamableHTTPOAuthAdapter {
     }
 
     // OAuth client registration endpoint
-    app.post('/register', async (req: any, res: any) => {
-      try {
-        const response = await fetch(`${platformUrl}/mcp-auth/oauth/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(req.body)
-        });
-        const data = await response.json();
-        res.status(response.status).json(data);
-      } catch (error) {
-        if (this.config.debug) {
-          console.error('[OAuth Proxy] Registration error:', error);
-        }
-        res.status(500).json({ error: 'oauth_proxy_error', error_description: 'Registration failed' });
-      }
-    });
+    console.log('🔧 [OAuth Proxy] Setting up /register endpoint');
+    app.post('/register', (req: any, res: any) => {
+      console.log('📥 [OAuth Proxy] /register endpoint called');
 
-    // OAuth token exchange endpoint
-    app.post('/token', async (req: any, res: any) => {
-      try {
-        // Handle both form data and JSON by reading raw body if needed
-        let requestBody = req.body;
-
-        if (this.config.debug) {
-          console.log('🔄 [OAuth Proxy] Content-Type:', req.headers['content-type']);
-          console.log('🔄 [OAuth Proxy] Proxying token request:', requestBody);
-        }
-
-        // If body is undefined, try to parse raw body for form data
-        if (!requestBody && req.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
-          // This means Express didn't parse the form data - need urlencoded middleware
-          if (this.config.debug) {
-            console.error('🔄 [OAuth Proxy] Form data not parsed! Add express.urlencoded() middleware to your app');
+      // Handle JSON body parsing internally (like /token endpoint)
+      let body = '';
+      req.on('data', (chunk: any) => {
+        body += chunk.toString();
+      });
+      req.on('end', async () => {
+        try {
+          // Parse JSON body
+          let parsedBody: any = {};
+          if (body.trim()) {
+            parsedBody = JSON.parse(body);
           }
-          res.status(500).json({ error: 'middleware_error', error_description: 'Add express.urlencoded() middleware' });
-          return;
-        }
 
-        const formData = new URLSearchParams();
-        Object.entries(requestBody || {}).forEach(([key, value]) => {
-          formData.append(key, String(value));
+          if (this.config.debug) {
+            console.log('🔧 [OAuth Proxy] Registration request body:', parsedBody);
+          }
+
+          const response = await fetch(`${platformUrl}/mcp-auth/oauth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(parsedBody)
+          });
+          const data = await response.json();
+
+          if (this.config.debug) {
+            console.log('✅ [OAuth Proxy] Registration response:', response.status, data);
+          }
+
+          res.status(response.status).json(data);
+        } catch (error) {
+          if (this.config.debug) {
+            console.error('[OAuth Proxy] Registration error:', error);
+          }
+          res.status(500).json({ error: 'oauth_proxy_error', error_description: 'Registration failed' });
+        }
+      });
+    });
+
+    // OAuth token exchange endpoint with built-in form parsing
+    console.log('🔧 [OAuth Proxy] Setting up /token endpoint');
+    app.post('/token', (req: any, res: any, next: any) => {
+      console.log('📥 [OAuth Proxy] /token endpoint called');
+      // Handle form parsing internally without requiring server middleware
+      if (req.headers['content-type']?.includes('application/x-www-form-urlencoded')) {
+        let body = '';
+        req.on('data', (chunk: any) => {
+          body += chunk.toString();
         });
+        req.on('end', async () => {
+          try {
+            // Parse form data internally
+            const parsedBody: any = {};
+            const urlParams = new URLSearchParams(body);
+            for (const [key, value] of urlParams) {
+              parsedBody[key] = value;
+            }
+            req.body = parsedBody;
 
-        // Ensure grant_type is present for authorization_code flow
-        if (!formData.has('grant_type')) {
-          formData.append('grant_type', 'authorization_code');
-        }
-
-        if (this.config.debug) {
-          console.log('🔄 [OAuth Proxy] Token request body:', formData.toString());
-        }
-
-        const response = await fetch(`${platformUrl}/mcp-auth/oauth/token`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: formData.toString()
+            await this.handleTokenRequest(req, res);
+          } catch (error) {
+            if (this.config.debug) {
+              console.error('🔄 [OAuth Proxy] Form parsing error:', error);
+            }
+            res.status(500).json({ error: 'form_parsing_error' });
+          }
         });
-        const data = await response.json();
-
-        if (this.config.debug) {
-          console.log('✅ [OAuth Proxy] Token response:', response.status, data);
-        }
-
-        res.status(response.status).json(data);
-      } catch (error) {
-        if (this.config.debug) {
-          console.error('[OAuth Proxy] Token error:', error);
-        }
-        res.status(500).json({ error: 'oauth_proxy_error', error_description: 'Token exchange failed' });
+      } else {
+        // Handle JSON body (already parsed by server)
+        this.handleTokenRequest(req, res);
       }
     });
+
+    console.log('🔧 [OAuth Proxy] About to set up /authorize endpoint...');
 
     // OAuth authorization endpoint (redirect)
+    console.log('🔧 [OAuth Proxy] Setting up /authorize endpoint');
     app.get('/authorize', (req: any, res: any) => {
+      console.log('📥 [OAuth Proxy] /authorize endpoint called');
       try {
         const queryString = new URLSearchParams(req.query || {}).toString();
         const redirectUrl = `${platformUrl}/mcp-auth/oauth/authorize?${queryString}`;
@@ -481,6 +555,65 @@ export class StreamableHTTPOAuthAdapter {
 
     if (this.config.debug) {
       console.log(`[OAuth Proxy] Added OAuth endpoints: /register, /token, /authorize → ${platformUrl}`);
+    }
+  }
+
+  private async handleTokenRequest(req: any, res: any) {
+    try {
+      if (this.config.debug) {
+        console.log('🔄 [OAuth Proxy] Content-Type:', req.headers['content-type']);
+        console.log('🔄 [OAuth Proxy] Proxying token request:', req.body);
+      }
+
+      // Construct platform URL (same logic as in createOAuthProxyEndpoints)
+      let platformUrl: string;
+      if (this.config.platformUrl && this.config.serverSlug) {
+        if (this.config.platformUrl.includes('localhost')) {
+          const port = this.config.platformUrl.match(/:(\d+)/)?.[1] || '3000';
+          const protocol = this.config.platformUrl.startsWith('https') ? 'https' : 'http';
+          platformUrl = `${protocol}://${this.config.serverSlug}.localhost:${port}`;
+        } else {
+          platformUrl = `https://${this.config.serverSlug}.mcp-obs.com`;
+        }
+      } else if (this.config.serverSlug) {
+        platformUrl = `https://${this.config.serverSlug}.mcp-obs.com`;
+      } else if (this.config.platformUrl) {
+        platformUrl = this.config.platformUrl;
+      } else {
+        platformUrl = 'https://mcp-obs.com';
+      }
+
+      const formData = new URLSearchParams();
+      Object.entries(req.body || {}).forEach(([key, value]) => {
+        formData.append(key, String(value));
+      });
+
+      // Ensure grant_type is present for authorization_code flow
+      if (!formData.has('grant_type')) {
+        formData.append('grant_type', 'authorization_code');
+      }
+
+      if (this.config.debug) {
+        console.log('🔄 [OAuth Proxy] Token request body:', formData.toString());
+      }
+
+      const response = await fetch(`${platformUrl}/mcp-auth/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formData.toString()
+      });
+      const data = await response.json();
+
+      if (this.config.debug) {
+        console.log('✅ [OAuth Proxy] Token response:', response.status, data);
+      }
+
+      res.status(response.status).json(data);
+    } catch (error) {
+      if (this.config.debug) {
+        console.error('[OAuth Proxy] Token error:', error);
+      }
+      res.status(500).json({ error: 'oauth_proxy_error', error_description: 'Token exchange failed' });
     }
   }
 }
