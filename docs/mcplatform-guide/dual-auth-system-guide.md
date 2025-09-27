@@ -1,8 +1,10 @@
-# 🔐 MCPlatform's Better Auth + Custom MCP Schema Integration Pattern
+# MCPlatform Dual Auth System Guide
 
-Complete implementation guide for MCPlatform's dual schema approach that separates authentication from business logic.
+## Overview
 
-## 🎯 Key Insight: Dual Schema Architecture
+MCPlatform implements a dual authentication architecture that separates platform authentication from MCP server authentication using Better Auth and a dual-schema pattern. This approach enables clean separation between authentication and business logic while maintaining full compatibility with Better Auth's expectations.
+
+## Key Insight: Dual Schema Architecture
 
 MCPlatform uses **two completely separate user systems** that work in parallel rather than trying to map Better Auth to custom business tables:
 
@@ -16,7 +18,7 @@ MCPlatform uses **two completely separate user systems** that work in parallel r
 - **Tables**: Custom business schema
 - **Schema**: `mcp_server_user`, `mcp_server_session`, `tool_calls`, `walkthrough_progress`
 
-## 📋 1. Schema Design: Better Auth Compatible Tables
+## Schema Design: Better Auth Compatible Tables
 
 MCPlatform creates Better Auth compatible tables with MCP prefixes that match Better Auth's expected structure exactly:
 
@@ -77,7 +79,7 @@ export const mcpOAuthVerification = pgTable('mcp_oauth_verification', {
 })
 ```
 
-## ⚙️ 2. Better Auth Configuration
+## Better Auth Configuration
 
 ```typescript
 // packages/dashboard/src/lib/auth/mcp/auth.ts
@@ -149,7 +151,7 @@ export function createMCPAuth(serverId: string, organizationId: string) {
 }
 ```
 
-## 🔗 3. Field Mapping Strategy
+## Field Mapping Strategy
 
 Better Auth fields map **exactly** to MCP OAuth schema fields - no custom mapping needed:
 
@@ -163,7 +165,7 @@ Better Auth fields map **exactly** to MCP OAuth schema fields - no custom mappin
 | `session.token`      | `mcpOAuthSession.token`    | Direct mapping |
 | `account.providerId` | `mcpOAuthAccount.providerId` | Direct mapping |
 
-## 🌍 4. MCP Context Injection
+## MCP Context Injection
 
 ### Organization Context in Sessions
 
@@ -189,7 +191,7 @@ async function getMcpServerContext(host: string) {
 }
 ```
 
-## 🔄 5. User Capture Integration: The Bridge Pattern
+## User Capture Integration: The Bridge Pattern
 
 MCPlatform bridges the two systems via **email matching**:
 
@@ -280,7 +282,7 @@ const users = await db
   )
 ```
 
-## 🎯 6. Complete Implementation Pattern
+## Complete Implementation Pattern
 
 ### Directory Structure
 
@@ -307,17 +309,7 @@ packages/dashboard/src/lib/auth/
 /api/oauth-callback       # Centralized OAuth callback with user capture
 ```
 
-## ✅ 7. Why This Pattern Works
-
-1. **No Schema Conflicts**: Better Auth gets its expected schema structure
-2. **Business Logic Separation**: Custom tables handle complex business requirements
-3. **Organization Boundaries**: Custom schema enforces organization scoping
-4. **Email Bridge**: Simple join by email connects the systems
-5. **Subdomain Context**: Host header provides MCP server context
-6. **OAuth Flexibility**: Can handle multiple OAuth providers per organization
-7. **Analytics Foundation**: Custom tables enable comprehensive user tracking
-
-## 🔑 Critical Discovery: No Server ID Constraints!
+## Critical Discovery: No Server ID Constraints
 
 **MCPlatform's Key Insight**: They do NOT have `mcp_server_id` NOT NULL constraints in their user tables! This avoids the Better Auth creation problem entirely.
 
@@ -368,7 +360,7 @@ if (session?.userId) {
 }
 ```
 
-## 🚨 Implementation Checklist
+## Implementation Checklist
 
 ### Database Schema
 - [ ] **REMOVE** `mcp_server_id` NOT NULL constraints from user tables
@@ -398,7 +390,17 @@ if (session?.userId) {
 - [ ] Add subdomain-aware authentication routing
 - [ ] Handle OAuth provider callbacks with user capture
 
-## 🎯 Key Takeaway
+## Why This Pattern Works
+
+1. **No Schema Conflicts**: Better Auth gets its expected schema structure
+2. **Business Logic Separation**: Custom tables handle complex business requirements
+3. **Organization Boundaries**: Custom schema enforces organization scoping
+4. **Email Bridge**: Simple join by email connects the systems
+5. **Subdomain Context**: Host header provides MCP server context
+6. **OAuth Flexibility**: Can handle multiple OAuth providers per organization
+7. **Analytics Foundation**: Custom tables enable comprehensive user tracking
+
+## Key Takeaway
 
 **Don't try to map Better Auth to your custom schema!** Instead:
 

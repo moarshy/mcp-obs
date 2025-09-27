@@ -1,8 +1,12 @@
-# 🔐 MCPlatform OAuth Server Integration: True Implementation
+# MCPlatform OAuth Server Integration Guide
 
-## 🎯 Key Discovery: MCPlatform Doesn't Use HTTP Introspection
+## Overview
 
-The critical insight: **MCPlatform MCP servers don't make HTTP calls to validate tokens**. They use direct database validation through shared libraries.
+This guide explains MCPlatform's OAuth server integration pattern - a key discovery that MCPlatform MCP servers don't use HTTP introspection calls but instead use direct database validation through shared libraries for token validation.
+
+## Key Discovery: Direct Database Validation
+
+**MCPlatform Doesn't Use HTTP Introspection**: The critical insight is that MCPlatform MCP servers don't make HTTP calls to validate tokens. They use direct database validation through shared libraries.
 
 ### ❌ Wrong Approach (What We Were Doing)
 ```typescript
@@ -21,9 +25,10 @@ import { validateAccessToken } from '@/lib/mcp-oauth/token-validation'
 const validation = await validateAccessToken(serverId, accessToken)
 ```
 
-## 🏗️ MCPlatform's Architecture Pattern
+## MCPlatform's Architecture Pattern
 
 ### 1. Shared Database Package
+
 All authentication logic lives in the shared database package that both dashboard and MCP servers import:
 
 ```
@@ -35,6 +40,7 @@ packages/database/
 ```
 
 ### 2. OAuth Validation Flow
+
 ```typescript
 // In MCP server (not HTTP call!)
 import { validateAccessToken } from 'database'
@@ -62,6 +68,7 @@ export async function withOAuthValidation(serverId: string, request: MCPRequest)
 ```
 
 ### 3. OAuth Challenge Response (MCPlatform Format)
+
 ```typescript
 function createOAuthChallenge(serverId: string, error?: string) {
     const wwwAuth = generateWWWAuthenticateHeader(serverId, 'MCP Server', error)
@@ -84,7 +91,7 @@ function createOAuthChallenge(serverId: string, error?: string) {
 }
 ```
 
-## 🔧 Implementation: True MCPlatform Pattern
+## Implementation: True MCPlatform Pattern
 
 ### 1. Update Server SDK to Use Direct Database Validation
 
@@ -336,7 +343,7 @@ async function main() {
 }
 ```
 
-## 🎯 Key Changes Required
+## Key Changes Required
 
 ### 1. Move Token Validation to Database Package
 
@@ -357,7 +364,127 @@ export {
 } from './mcp-oauth/token-validation'
 ```
 
-### 2. Update Server SDK Dependencies
+### 2. Token Validation Implementation
+
+**File**: `packages/database/src/mcp-oauth/token-validation.ts`
+
+```typescript
+import { db } from '../connection'
+import { mcpOAuthToken, mcpEndUser, mcpOAuthClient } from '../mcp-auth-schema'
+import { eq, and } from 'drizzle-orm'
+
+export interface TokenValidationResult {
+  valid: boolean;
+  user?: {
+    id: string;
+    email: string;
+    name?: string;
+    image?: string;
+  };
+  token?: {
+    accessToken: string;
+    scope?: string;
+    clientId: string;
+    expiresAt: Date;
+  };
+  client?: {
+    id: string;
+    name: string;
+  };
+  error?: string;
+}
+
+export async function validateAccessToken(serverId: string, accessToken: string): Promise<TokenValidationResult> {
+  try {
+    // Query token with user and client data
+    const result = await db
+      .select({
+        token: mcpOAuthToken,
+        user: mcpEndUser,
+        client: mcpOAuthClient
+      })
+      .from(mcpOAuthToken)
+      .innerJoin(mcpEndUser, eq(mcpOAuthToken.userId, mcpEndUser.id))
+      .innerJoin(mcpOAuthClient, eq(mcpOAuthToken.clientId, mcpOAuthClient.clientId))
+      .where(and(
+        eq(mcpOAuthToken.accessToken, accessToken),
+        eq(mcpOAuthToken.mcpServerId, serverId)
+      ))
+      .limit(1)
+
+    if (result.length === 0) {
+      return { valid: false, error: 'Token not found' }
+    }
+
+    const { token, user, client } = result[0]
+
+    // Check if token is expired
+    if (token.expiresAt < new Date()) {
+      return { valid: false, error: 'Token expired' }
+    }
+
+    return {
+      valid: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name || undefined,
+        image: user.image || undefined
+      },
+      token: {
+        accessToken: token.accessToken,
+        scope: token.scope || undefined,
+        clientId: token.clientId,
+        expiresAt: token.expiresAt
+      },
+      client: {
+        id: client.clientId,
+        name: client.clientName
+      }
+    }
+  } catch (error) {
+    console.error('Token validation error:', error)
+    return { valid: false, error: 'Validation failed' }
+  }
+}
+
+export async function generateWWWAuthenticateHeader(
+  serverId: string,
+  realm: string,
+  error?: string,
+  errorDescription?: string
+): Promise<string> {
+  const parts = [`realm="${realm}"`]
+
+  if (error) {
+    parts.push(`error="${error}"`)
+  }
+
+  if (errorDescription) {
+    parts.push(`error_description="${errorDescription}"`)
+  }
+
+  // Get server's authorization endpoint
+  try {
+    const serverResult = await db
+      .select({ authorizationEndpoint: mcpServer.authorizationEndpoint })
+      .from(mcpServer)
+      .where(eq(mcpServer.id, serverId))
+      .limit(1)
+
+    if (serverResult.length > 0 && serverResult[0].authorizationEndpoint) {
+      parts.push(`authorization_uri="${serverResult[0].authorizationEndpoint}"`)
+    }
+  } catch (error) {
+    // Fallback if server lookup fails
+    console.warn('Failed to get server authorization endpoint:', error)
+  }
+
+  return `Bearer ${parts.join(', ')}`
+}
+```
+
+### 3. Update Server SDK Dependencies
 
 **File**: `packages/server-sdk/package.json`
 
@@ -372,11 +499,11 @@ Ensure database dependency:
 }
 ```
 
-### 3. Remove HTTP Client Dependencies
+### 4. Remove HTTP Client Dependencies
 
 No need for fetch calls, HTTP client libraries, or introspection endpoint URLs.
 
-## 🔄 Complete Flow Example
+## Complete Flow Example
 
 ### 1. MCP Client Sends Request
 ```http
@@ -423,7 +550,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 ```
 
-## ✅ Benefits of MCPlatform Pattern
+## Benefits of MCPlatform Pattern
 
 1. **No Network Latency**: Direct database queries vs HTTP calls
 2. **Better Error Handling**: Database transactions vs HTTP timeouts
@@ -432,7 +559,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 5. **Performance**: No serialization/deserialization overhead
 6. **Consistency**: Same OAuth logic everywhere
 
-## 🚀 Implementation Steps
+## Implementation Steps
 
 1. **Update Server SDK** to use database-direct validation
 2. **Add server ID resolution** for database queries
@@ -440,4 +567,53 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 4. **Test with database tokens** from the dashboard
 5. **Verify WWW-Authenticate** headers are MCPlatform-compliant
 
-The key insight: MCPlatform uses shared libraries and direct database access, not HTTP APIs, for OAuth token validation within the platform infrastructure.
+## Security Considerations
+
+### Server ID Resolution
+```typescript
+// Always validate server ID before token validation
+export async function getMcpServerBySlug(slug: string): Promise<McpServer | null> {
+  try {
+    const result = await db
+      .select()
+      .from(mcpServer)
+      .where(eq(mcpServer.slug, slug))
+      .limit(1)
+
+    return result[0] || null
+  } catch (error) {
+    console.error('Server lookup error:', error)
+    return null
+  }
+}
+```
+
+### Token Scope Validation
+```typescript
+export function checkTokenScope(tokenScope: string, requiredScopes: string[]): boolean {
+  const grantedScopes = tokenScope.split(' ')
+  return requiredScopes.every(scope => grantedScopes.includes(scope))
+}
+```
+
+### Rate Limiting
+Consider implementing rate limiting at the database validation level:
+
+```typescript
+export async function validateAccessTokenWithRateLimit(
+  serverId: string,
+  accessToken: string,
+  clientIp: string
+): Promise<TokenValidationResult> {
+  // Implement rate limiting logic before token validation
+  const rateLimitPassed = await checkRateLimit(clientIp, serverId)
+
+  if (!rateLimitPassed) {
+    return { valid: false, error: 'Rate limit exceeded' }
+  }
+
+  return validateAccessToken(serverId, accessToken)
+}
+```
+
+The key insight: MCPlatform uses shared libraries and direct database access, not HTTP APIs, for OAuth token validation within the platform infrastructure. This provides better performance, reliability, and type safety while maintaining the same security guarantees.

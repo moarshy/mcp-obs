@@ -1,27 +1,24 @@
-# oRPC Server Actions Implementation Guide
+# MCPlatform oRPC Implementation Guide
 
 ## Overview
 
-This document outlines the transition from complex oRPC procedures to clean server actions pattern, based on learnings from the MCPlatform project. This approach provides better maintainability, type safety, and follows Next.js best practices.
+This guide outlines the MCPlatform approach to implementing oRPC server actions, transitioning from complex procedures to clean, maintainable server actions that provide better type safety and follow Next.js best practices.
 
-## Problem with Original Approach
+## Key Principles
 
-### Issues with Complex oRPC Setup:
+### 1. Server Actions Over Complex Procedures
+- **Server Actions for Mutations**: Use `*.actionable({})` pattern
+- **Direct Database Queries for Reads**: In Server Components
+- **Typed Error System**: Proper error boundaries with oRPC errors
+- **Cache Revalidation**: For optimal performance
+- **Organization-Scoped Security**: For multi-tenancy
+
+### 2. Problems with Complex oRPC Setup
 - **Build Failures**: Complex procedure system caused module resolution issues
 - **Client/Server Boundary Issues**: Procedures trying to use `next/headers` in client contexts
 - **Over-Engineering**: Complicated setup for simple CRUD operations
 - **Poor Error Handling**: Generic error responses without proper typing
 - **Maintenance Overhead**: Complex router/procedure hierarchy
-
-## Solution: MCPlatform Server Actions Pattern
-
-### Core Principles
-
-1. **Server Actions for Mutations** (`*.actionable({})`)
-2. **Direct Database Queries for Reads** in Server Components
-3. **Typed Error System** with proper error boundaries
-4. **Cache Revalidation** for optimal performance
-5. **Organization-Scoped Security** for multi-tenancy
 
 ## Architecture Overview
 
@@ -37,9 +34,7 @@ This document outlines the transition from complex oRPC procedures to clean serv
     └── procedures/        # ❌ Complex procedures (removed)
 ```
 
-## Implementation Details
-
-### 1. Base Router with Error System
+## Base Router with Error System
 
 ```typescript
 // /lib/orpc/router.ts
@@ -55,9 +50,10 @@ export const base = os.errors({
 })
 ```
 
-### 2. Server Actions Pattern
+## Server Actions Pattern
 
-#### **Template Structure:**
+### Template Structure
+
 ```typescript
 'use server'  // MUST be first line
 
@@ -114,9 +110,10 @@ export const actionName = base
   .actionable({})  // Converts to server action
 ```
 
-### 3. Real Implementation Examples
+## Real Implementation Examples
 
-#### **MCP Server Creation Action:**
+### MCP Server Creation Action
+
 ```typescript
 // /lib/orpc/actions/mcp-servers.ts
 'use server'
@@ -196,9 +193,10 @@ export const createMcpServerAction = base
   .actionable({})
 ```
 
-### 4. Server Component Data Fetching
+## Server Component Data Fetching
 
-#### **Direct Database Queries in Server Components:**
+### Direct Database Queries in Server Components
+
 ```typescript
 // /app/dashboard/mcp-servers/page.tsx
 import { requireSession } from '@/lib/auth/session'
@@ -245,9 +243,10 @@ export default function McpServersPage() {
 }
 ```
 
-### 5. Client-Side Usage
+## Client-Side Usage
 
-#### **Using Server Actions in Client Components:**
+### Using Server Actions in Client Components
+
 ```typescript
 'use client'
 
@@ -286,72 +285,37 @@ export function CreateServerForm() {
 }
 ```
 
-## Key Benefits of This Approach
+## Key Benefits
 
-### 1. **Simplicity**
+### 1. Simplicity
 - No complex procedure hierarchy
 - Direct database operations
 - Clear separation of concerns
 
-### 2. **Type Safety**
+### 2. Type Safety
 - Zod input validation
 - Drizzle ORM type safety
 - Typed error system
 
-### 3. **Performance**
+### 3. Performance
 - Direct database queries (no oRPC overhead)
 - Proper cache revalidation
 - Optimized server/client boundaries
 
-### 4. **Security**
+### 4. Security
 - Organization-scoped operations
 - Proper authentication checks
 - Database-level constraints
 
-### 5. **Maintainability**
+### 5. Maintainability
 - Single file per feature
 - Clear error handling
 - Easy to test and debug
 
-## Migration from Complex oRPC
-
-### Before (Complex Procedures):
-```typescript
-// ❌ Complex setup with procedures
-const protectedProcedure = procedure
-  .use(async (ctx, meta, next) => {
-    // Complex middleware setup
-    const context = await createContext()
-    if (!context.session) throw new ORPCError(...)
-    return next({ ctx: context })
-  })
-
-export const mcpProcedures = os({
-  createServer: protectedProcedure
-    .input(schema)
-    .mutation(async ({ input, ctx }) => {
-      // Procedure logic
-    })
-})
-```
-
-### After (Clean Server Actions):
-```typescript
-// ✅ Clean server action
-'use server'
-
-export const createMcpServerAction = base
-  .input(schema)
-  .handler(async ({ input, errors }) => {
-    const session = await requireSession()
-    // Direct logic
-  })
-  .actionable({})
-```
-
 ## Error Handling Patterns
 
 ### Typed Errors
+
 ```typescript
 // Define errors in router
 export const base = os.errors({
@@ -373,6 +337,7 @@ onError((error) => {
 ```
 
 ### Database Error Mapping
+
 ```typescript
 try {
   await db.insert(table).values(data)
@@ -392,6 +357,7 @@ try {
 ## Cache Management
 
 ### Revalidation Patterns
+
 ```typescript
 // Specific path revalidation
 revalidatePath('/dashboard/mcp-servers')
@@ -407,6 +373,7 @@ revalidateTag('mcp-servers')
 ## Security Considerations
 
 ### Organization Scoping
+
 ```typescript
 // ALWAYS verify organization membership
 const userMemberships = await db
@@ -422,6 +389,7 @@ const data = await db
 ```
 
 ### Input Validation
+
 ```typescript
 // Use Zod for all input validation
 const schema = z.object({
@@ -430,26 +398,42 @@ const schema = z.object({
 })
 ```
 
-## Testing Strategies
+## Migration from Complex oRPC
 
-### Unit Testing Actions
+### Before (Complex Procedures)
+
 ```typescript
-describe('createMcpServerAction', () => {
-  it('creates server with valid input', async () => {
-    const mockSession = { user: { id: 'user1' } }
-    const input = { name: 'Test Server', slug: 'test-server' }
-
-    const result = await createMcpServerAction(input)
-    expect(result).toMatchObject({ name: 'Test Server' })
+// ❌ Complex setup with procedures
+const protectedProcedure = procedure
+  .use(async (ctx, meta, next) => {
+    // Complex middleware setup
+    const context = await createContext()
+    if (!context.session) throw new ORPCError(...)
+    return next({ ctx: context })
   })
 
-  it('throws error for duplicate slug', async () => {
-    const input = { name: 'Test', slug: 'existing-slug' }
-
-    await expect(createMcpServerAction(input))
-      .rejects.toThrow('MCP server slug already exists')
-  })
+export const mcpProcedures = os({
+  createServer: protectedProcedure
+    .input(schema)
+    .mutation(async ({ input, ctx }) => {
+      // Procedure logic
+    })
 })
+```
+
+### After (Clean Server Actions)
+
+```typescript
+// ✅ Clean server action
+'use server'
+
+export const createMcpServerAction = base
+  .input(schema)
+  .handler(async ({ input, errors }) => {
+    const session = await requireSession()
+    // Direct logic
+  })
+  .actionable({})
 ```
 
 ## Best Practices
