@@ -17,8 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { createMcpServerAction } from '@/lib/orpc/actions/mcp-servers'
-// import { validateSlug } from '@/lib/actions/validate-slug' // Temporarily disabled until we implement server action
+import { createMcpServerAction, validateSlugAction } from '@/lib/orpc/actions/mcp-servers'
 import { Server, ExternalLink, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface CreateMcpServerDialogProps {
@@ -97,35 +96,24 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
       return
     }
 
-    // Simple client-side validation for now
-    setSlugValidation({ isChecking: true, isAvailable: null, message: 'Checking format...' })
+    setSlugValidation({ isChecking: true, isAvailable: null, message: 'Checking availability...' })
 
-    // Basic slug format validation
-    const isValidFormat = /^[a-z0-9-]+$/.test(slug) && slug.length >= 2 && slug.length <= 50
-    const reservedSlugs = ['www', 'api', 'admin', 'dashboard', 'app', 'mail', 'ftp', 'blog', 'help', 'support']
-    const isReserved = reservedSlugs.includes(slug.toLowerCase())
+    try {
+      // Call the server-side validation action
+      const result = await validateSlugAction({ slug })
 
-    setTimeout(() => {
-      if (isReserved) {
-        setSlugValidation({
-          isChecking: false,
-          isAvailable: false,
-          message: 'This subdomain is reserved. Please choose a different one.'
-        })
-      } else if (!isValidFormat) {
-        setSlugValidation({
-          isChecking: false,
-          isAvailable: false,
-          message: 'Slug must contain only lowercase letters, numbers, and hyphens (2-50 characters)'
-        })
-      } else {
-        setSlugValidation({
-          isChecking: false,
-          isAvailable: true,
-          message: 'This subdomain looks good!'
-        })
-      }
-    }, 300)
+      setSlugValidation({
+        isChecking: false,
+        isAvailable: result.available,
+        message: result.message
+      })
+    } catch (error: any) {
+      setSlugValidation({
+        isChecking: false,
+        isAvailable: false,
+        message: 'Error checking slug availability. Please try again.'
+      })
+    }
   }
 
   const handleSlugChange = (value: string) => {

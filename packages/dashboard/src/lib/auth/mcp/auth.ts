@@ -1,41 +1,42 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { eq } from 'drizzle-orm'
-import {
-  db,
-  mcpServer,
-  mcpEndUser,
-  mcpOauthClient,
-  mcpOauthToken,
-  mcpOauthConsent,
-} from 'database'
-import { createMCPDrizzleAdapter } from './adapter'
+import { db, mcpEndUser } from 'database'
 
-// Create MCP-specific OAuth server configuration
+// Create MCP-specific Better Auth instance using our existing schema
 export function createMCPAuth(serverId: string, organizationId: string) {
   return betterAuth({
-    // Use custom MCP adapter instead of standard drizzle adapter
-    database: createMCPDrizzleAdapter(serverId),
+    // Use drizzle adapter with our existing MCP schema
+    database: drizzleAdapter(db, {
+      provider: 'pg',
+      schema: {
+        // Map Better Auth expected table names to our existing tables
+        user: mcpEndUser,
+        // Better Auth will auto-create session and account tables if needed
+      },
+    }),
 
-    // Base URL will be set by the subdomain routing
+    // Base URL will be set dynamically
     baseURL: process.env.NODE_ENV === 'development'
-      ? `http://localhost:3000?mcp_server=${serverId}`
-      : undefined, // Will be determined by subdomain
+      ? `http://localhost:3000/mcp-oidc/auth`
+      : undefined,
 
     // End-user authentication providers
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
+      sendResetPassword: false, // Disable for now
     },
 
     socialProviders: {
       google: {
-        clientId: process.env.GOOGLE_CLIENT_ID as string,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+        clientId: process.env.GOOGLE_CLIENT_ID || '',
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+        enabled: !!process.env.GOOGLE_CLIENT_ID,
       },
       github: {
-        clientId: process.env.GITHUB_CLIENT_ID as string,
-        clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+        clientId: process.env.GITHUB_CLIENT_ID || '',
+        clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+        enabled: !!process.env.GITHUB_CLIENT_ID,
       },
     },
 
@@ -44,15 +45,24 @@ export function createMCPAuth(serverId: string, organizationId: string) {
       expiresIn: 60 * 60 * 24 * 7, // 7 days
     },
 
-    // Advanced configuration for OAuth-specific features will be handled
-    // through custom endpoints and middleware rather than built-in Better Auth plugins
-    advanced: {
-      // Custom token generation
-      generateId: () => crypto.randomUUID(),
+    // Store MCP context for use in session and callbacks
+    plugins: [
+      {
+        id: 'mcp-context',
+        init() {
+          return {
+            mcpServerId: serverId,
+            organizationId: organizationId,
+          }
+        }
+      }
+    ],
 
-      // Cross-origin configuration for MCP clients
+    // Advanced configuration
+    advanced: {
+      generateId: () => crypto.randomUUID(),
       crossSubDomainCookies: {
-        enabled: false, // Each MCP server has its own domain
+        enabled: false,
       }
     }
   })
