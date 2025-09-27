@@ -97,7 +97,9 @@ export const mcpOauthClient = pgTable('mcp_oauth_client', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
-// End Users (Better Auth compatible - no server constraints)
+// Better Auth MCP Compatible Tables (MCPlatform Pattern)
+
+// MCP End Users (Better Auth compatible - no server constraints)
 export const mcpEndUser = pgTable('mcp_end_user', {
   id: uuid('id').defaultRandom().primaryKey(),
   // NO mcp_server_id constraint - server context handled in sessions
@@ -115,6 +117,52 @@ export const mcpEndUser = pgTable('mcp_end_user', {
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// MCP Sessions (Better Auth compatible)
+export const mcpSession = pgTable('mcp_session', {
+  id: text('id').primaryKey().$defaultFn(() => `mcps_${Math.random().toString(36).slice(2, 14)}`),
+  expiresAt: timestamp('expires_at').notNull(),
+  token: text('token').notNull().unique(),
+  userId: uuid('user_id').notNull().references(() => mcpEndUser.id, { onDelete: 'cascade' }),
+
+  // Better Auth required fields
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+
+  // MCP-specific context fields
+  activeOrganizationId: text('active_organization_id'), // Organization context
+  mcpServerId: text('mcp_server_id'), // MCP server context
+
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+// MCP Accounts (Better Auth compatible for social OAuth)
+export const mcpAccount = pgTable('mcp_account', {
+  id: text('id').primaryKey().$defaultFn(() => `mcpa_${Math.random().toString(36).slice(2, 14)}`),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  userId: uuid('user_id').notNull().references(() => mcpEndUser.id, { onDelete: 'cascade' }),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at'),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+})
+
+// MCP Verification (Better Auth compatible)
+export const mcpVerification = pgTable('mcp_verification', {
+  id: text('id').primaryKey().$defaultFn(() => `mcpv_${Math.random().toString(36).slice(2, 14)}`),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
 // OAuth Access Tokens

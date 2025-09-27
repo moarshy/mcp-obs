@@ -1,6 +1,6 @@
 {
-  "id": "fc2c0512-f6ee-49fd-90ec-8e7a59e013af",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "13d7dfdd-2186-49b6-92bd-d00c90f87341",
+  "prevId": "fc2c0512-f6ee-49fd-90ec-8e7a59e013af",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1666,6 +1666,18 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "active_organization_id": {
           "name": "active_organization_id",

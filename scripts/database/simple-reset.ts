@@ -39,7 +39,11 @@ async function resetDatabase() {
       'DROP TABLE IF EXISTS "oauth_access_token" CASCADE',
       'DROP TABLE IF EXISTS "organization" CASCADE',
       'DROP TABLE IF EXISTS "mcp_server" CASCADE',
-      'DROP TABLE IF EXISTS "__drizzle_migrations" CASCADE'
+      'DROP TABLE IF EXISTS "__drizzle_migrations" CASCADE',
+      'DROP TABLE IF EXISTS "mcp_account" CASCADE',
+      'DROP TABLE IF EXISTS "mcp_session" CASCADE',
+      'DROP TABLE IF EXISTS "mcp_verification" CASCADE',
+
     ]
 
     // Execute each drop statement

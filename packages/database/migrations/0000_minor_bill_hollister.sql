@@ -116,6 +116,22 @@ CREATE TABLE "verification" (
 	"updated_at" timestamp
 );
 --> statement-breakpoint
+CREATE TABLE "mcp_account" (
+	"id" text PRIMARY KEY NOT NULL,
+	"account_id" text NOT NULL,
+	"provider_id" text NOT NULL,
+	"user_id" uuid NOT NULL,
+	"access_token" text,
+	"refresh_token" text,
+	"id_token" text,
+	"access_token_expires_at" timestamp,
+	"refresh_token_expires_at" timestamp,
+	"scope" text,
+	"password" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "mcp_end_user" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"email" text,
@@ -221,6 +237,18 @@ CREATE TABLE "mcp_server_user" (
 	CONSTRAINT "mcp_server_user_tracking_id_unique" UNIQUE("tracking_id")
 );
 --> statement-breakpoint
+CREATE TABLE "mcp_session" (
+	"id" text PRIMARY KEY NOT NULL,
+	"expires_at" timestamp NOT NULL,
+	"token" text NOT NULL,
+	"user_id" uuid NOT NULL,
+	"active_organization_id" text,
+	"mcp_server_id" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "mcp_session_token_unique" UNIQUE("token")
+);
+--> statement-breakpoint
 CREATE TABLE "mcp_tool_calls" (
 	"id" text PRIMARY KEY NOT NULL,
 	"mcp_server_user_id" text NOT NULL,
@@ -232,6 +260,15 @@ CREATE TABLE "mcp_tool_calls" (
 	"success" boolean,
 	"error_message" text,
 	"created_at" bigint
+);
+--> statement-breakpoint
+CREATE TABLE "mcp_verification" (
+	"id" text PRIMARY KEY NOT NULL,
+	"identifier" text NOT NULL,
+	"value" text NOT NULL,
+	"expires_at" timestamp NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "upstream_oauth_tokens" (
@@ -277,6 +314,7 @@ ALTER TABLE "invitation" ADD CONSTRAINT "invitation_inviter_id_user_id_fk" FOREI
 ALTER TABLE "member" ADD CONSTRAINT "member_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "member" ADD CONSTRAINT "member_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "mcp_account" ADD CONSTRAINT "mcp_account_user_id_mcp_end_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."mcp_end_user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "mcp_oauth_client" ADD CONSTRAINT "mcp_oauth_client_mcp_server_id_mcp_server_id_fk" FOREIGN KEY ("mcp_server_id") REFERENCES "public"."mcp_server"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "mcp_oauth_code" ADD CONSTRAINT "mcp_oauth_code_client_id_mcp_oauth_client_client_id_fk" FOREIGN KEY ("client_id") REFERENCES "public"."mcp_oauth_client"("client_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "mcp_oauth_code" ADD CONSTRAINT "mcp_oauth_code_user_id_mcp_end_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."mcp_end_user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -288,5 +326,6 @@ ALTER TABLE "mcp_oauth_token" ADD CONSTRAINT "mcp_oauth_token_client_id_mcp_oaut
 ALTER TABLE "mcp_oauth_token" ADD CONSTRAINT "mcp_oauth_token_user_id_mcp_end_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."mcp_end_user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "mcp_oauth_token" ADD CONSTRAINT "mcp_oauth_token_mcp_server_id_mcp_server_id_fk" FOREIGN KEY ("mcp_server_id") REFERENCES "public"."mcp_server"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "mcp_server_session" ADD CONSTRAINT "mcp_server_session_mcp_server_user_id_mcp_server_user_id_fk" FOREIGN KEY ("mcp_server_user_id") REFERENCES "public"."mcp_server_user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "mcp_session" ADD CONSTRAINT "mcp_session_user_id_mcp_end_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."mcp_end_user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "mcp_tool_calls" ADD CONSTRAINT "mcp_tool_calls_mcp_server_user_id_mcp_server_user_id_fk" FOREIGN KEY ("mcp_server_user_id") REFERENCES "public"."mcp_server_user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "upstream_oauth_tokens" ADD CONSTRAINT "upstream_oauth_tokens_mcp_server_user_id_mcp_server_user_id_fk" FOREIGN KEY ("mcp_server_user_id") REFERENCES "public"."mcp_server_user"("id") ON DELETE cascade ON UPDATE no action;
