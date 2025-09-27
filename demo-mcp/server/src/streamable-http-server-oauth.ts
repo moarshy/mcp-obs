@@ -121,11 +121,35 @@ function createMCPServer(sessionId: string): Server {
 
   // OAuth-protected tool handler - get auth context from session
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    // Get auth context from the session (set by Express middleware)
-    const authContext = sessionAuthContexts[sessionId];
+    // Find the auth context - try multiple strategies since session IDs can change
+    let authContext: any = null;
+    let foundSessionId: string | null = null;
+
+    // Strategy 1: Try the original session ID
+    if (sessionAuthContexts[sessionId]) {
+      authContext = sessionAuthContexts[sessionId];
+      foundSessionId = sessionId;
+    }
+
+    // Strategy 2: If no auth context found, try to find any available session with auth context
+    // This handles the case where session ID changed during transport initialization
+    if (!authContext) {
+      const availableAuthSessions = Object.keys(sessionAuthContexts);
+      if (availableAuthSessions.length > 0) {
+        // Use the most recent auth context (last one added)
+        foundSessionId = availableAuthSessions[availableAuthSessions.length - 1];
+        authContext = sessionAuthContexts[foundSessionId];
+        console.log(`🔧 [TOOL DEBUG] Using fallback session ID: ${foundSessionId} instead of ${sessionId}`);
+      }
+    }
+
+    console.log(`🔍 [TOOL DEBUG] Original sessionId: ${sessionId}`);
+    console.log(`🔍 [TOOL DEBUG] Found sessionId: ${foundSessionId}`);
+    console.log(`🔍 [TOOL DEBUG] Available auth contexts:`, Object.keys(sessionAuthContexts));
+    console.log(`🔍 [TOOL DEBUG] Auth context found:`, !!authContext);
 
     if (!authContext) {
-      throw new Error('Authentication required - no auth context found for this session');
+      throw new Error(`Authentication required - no auth context found for session ${sessionId}. Available: ${Object.keys(sessionAuthContexts).join(', ')}`);
     }
 
     // Track authenticated tool usage
@@ -290,16 +314,19 @@ async function main() {
     console.log(`🔍 [DEBUG] Available sessions:`, Object.keys(transports));
     console.log(`🔍 [DEBUG] Request method:`, req.body?.method);
     console.log(`🔍 [DEBUG] Is initialize request:`, isInitializeRequest(req.body));
+    console.log(`🔍 [DEBUG] Auth context available:`, !!authContext);
+    console.log(`🔍 [DEBUG] Auth context email:`, authContext?.email || 'N/A');
+
+    // IMPORTANT: Store auth context for ANY session ID we have, even if no transport yet
+    if (sessionId && authContext) {
+      sessionAuthContexts[sessionId] = authContext;
+      console.log(`🔐 [DEBUG] Stored auth context for session ${sessionId}: ${authContext.email}`);
+    }
 
     try {
       // Reuse existing transport if session exists
       if (sessionId && transports[sessionId]) {
         transport = transports[sessionId];
-
-        // Store auth context globally for this session to be used by MCP handlers
-        if (sessionId) {
-          sessionAuthContexts[sessionId] = authContext;
-        }
 
         // Handle existing session with proper stream recreation
         if ((req as any)._mcpOAuthBufferedBody) {
