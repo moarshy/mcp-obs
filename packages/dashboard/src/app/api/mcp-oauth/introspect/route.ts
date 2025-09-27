@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { introspectToken } from '@/lib/mcp-oauth/token-validation'
 import { getOAuthClient } from '@/lib/mcp-oauth/client-registration'
 import { getMcpServerBySlug } from '@/lib/mcp-server-utils'

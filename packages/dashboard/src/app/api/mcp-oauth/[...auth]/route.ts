@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createMCPAuth } from '@/lib/auth/mcp/auth'
 import { getMcpServerBySlug } from '@/lib/mcp-server-utils'
 import { headers } from 'next/headers'

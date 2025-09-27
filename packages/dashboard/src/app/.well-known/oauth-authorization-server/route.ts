@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import type { NextRequest } from 'next/server'
 
 // Proxy to centralized MCP server API (MCPlatform pattern)
 export async function GET(request: NextRequest) {

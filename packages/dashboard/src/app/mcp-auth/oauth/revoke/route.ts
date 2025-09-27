@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { getMcpServerBySlug } from '@/lib/mcp-server-utils'
 import { headers } from 'next/headers'
 import { db, mcpOauthToken } from 'database'
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse form data (RFC 7009 requires form encoding)
-    let params: Record<string, any> = {}
+    const params: Record<string, any> = {}
     const contentType = request.headers.get('content-type') || ''
 
     if (contentType.includes('application/x-www-form-urlencoded')) {

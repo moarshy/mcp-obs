@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { redirect } from 'next/navigation'
 import { validateAuthorizationRequest, generateAuthorizationCode, checkExistingConsent, buildAuthorizationResponse } from '@/lib/mcp-oauth/authorization-flow'
 import { getMcpServerBySlug } from '@/lib/mcp-server-utils'

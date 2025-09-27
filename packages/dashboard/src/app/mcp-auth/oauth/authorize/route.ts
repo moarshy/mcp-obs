@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { getMcpServerBySlug } from '@/lib/mcp-server-utils'
 import { headers } from 'next/headers'
 
@@ -100,34 +100,45 @@ export async function GET(request: NextRequest) {
     // TODO: Validate client_id against registered clients in database
     // TODO: Validate redirect_uri against registered URIs
 
-    // For now, return a simple authorization form
-    // In a full implementation, this would render an authorization page
+    // Check if user is already authenticated with Better Auth
+    try {
+      const { createMCPAuth } = await import('@/lib/auth/mcp/auth')
+      const mcpAuth = createMCPAuth(mcpServer.id, mcpServer.organizationId)
+
+      const session = await mcpAuth.api.getSession({
+        headers: request.headers
+      })
+
+      if (session?.user) {
+        // User is authenticated, proceed with consent and authorization code generation
+        return await handleAuthenticatedUser({
+          mcpServer,
+          params,
+          isDevelopment,
+          host,
+          user: session.user
+        })
+      }
+    } catch (authError) {
+      console.log('No active session found, redirecting to login:', authError.message)
+    }
+
+    // User needs to authenticate first - redirect to MCP-OIDC login
     const baseUrl = isDevelopment
       ? `http://${host}`
       : `https://${mcpServer.slug}.mcp-obs.com`
 
-    return NextResponse.json({
-      message: 'OAuth Authorization Endpoint',
-      server: {
-        id: mcpServer.id,
-        name: mcpServer.name,
-        slug: mcpServer.slug
-      },
-      parameters: params,
-      next_steps: [
-        'User authentication required',
-        'User consent required',
-        'Authorization code generation',
-        'Redirect to client with code'
-      ],
-      auth_methods: {
-        password: mcpServer.enablePasswordAuth,
-        google: mcpServer.enableGoogleAuth,
-        github: mcpServer.enableGithubAuth
-      },
-      // This would normally redirect to a login/consent page
-      authorization_url: `${baseUrl}/mcp-auth/login?${url.searchParams.toString()}`
+    const loginUrl = new URL(`${baseUrl}/mcp-oidc/login`)
+
+    // Forward all OAuth parameters to login page
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) {
+        loginUrl.searchParams.set(key, value)
+      }
     })
+
+    console.log('Redirecting to MCP-OIDC login:', loginUrl.toString())
+    return NextResponse.redirect(loginUrl.toString())
 
   } catch (error) {
     console.error('Error in OAuth authorize endpoint:', error)
@@ -138,8 +149,100 @@ export async function GET(request: NextRequest) {
   }
 }
 
+async function handleAuthenticatedUser({
+  mcpServer,
+  params,
+  isDevelopment,
+  host,
+  user
+}: {
+  mcpServer: any
+  params: any
+  isDevelopment: boolean
+  host: string
+  user: any
+}) {
+  try {
+    const { nanoid } = await import('nanoid')
+    const { db, mcpOauthCode, mcpServerUser, mcpServerSession } = await import('database')
+    const { eq, and } = await import('drizzle-orm')
+
+    // Generate authorization code following MCPlatform pattern
+    const authorizationCode = nanoid(64)
+
+    // Implement user capture following MCPlatform pattern
+    // Check if custom MCP user exists by email
+    let mcpUser = null
+    if (user.email) {
+      const [existingUser] = await db.select()
+        .from(mcpServerUser)
+        .where(eq(mcpServerUser.email, user.email))
+        .limit(1)
+
+      if (existingUser) {
+        mcpUser = existingUser
+      } else {
+        // Create custom MCP user for business logic
+        const [newUser] = await db.insert(mcpServerUser).values({
+          email: user.email,
+          upstreamSub: user.id, // Link to Better Auth user
+          profileData: {
+            name: user.name,
+            image: user.image,
+            emailVerified: user.emailVerified
+          }
+        }).returning()
+
+        mcpUser = newUser
+
+        // Create MCP server session linking user to organization
+        await db.insert(mcpServerSession).values({
+          mcpServerSlug: mcpServer.slug,
+          mcpServerUserId: mcpUser.id,
+          sessionData: {
+            betterAuthUserId: user.id, // Bridge to auth system
+            organizationId: mcpServer.organizationId
+          }
+        })
+      }
+    }
+
+    await db.insert(mcpOauthCode).values({
+      authorizationCode,
+      codeChallenge: params.code_challenge,
+      codeChallengeMethod: params.code_challenge_method,
+      clientId: params.client_id,
+      userId: user.id, // Use actual Better Auth user ID
+      mcpServerId: mcpServer.id,
+      redirectUri: params.redirect_uri,
+      scope: params.scope || 'read,write',
+      state: params.state,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+    })
+
+    console.log('Generated authorization code for authenticated user')
+
+    // Redirect back to client application with authorization code
+    const redirectUrl = new URL(params.redirect_uri)
+    redirectUrl.searchParams.set('code', authorizationCode)
+    if (params.state) {
+      redirectUrl.searchParams.set('state', params.state)
+    }
+
+    console.log('Redirecting to client with authorization code:', redirectUrl.toString())
+    return NextResponse.redirect(redirectUrl.toString())
+
+  } catch (error) {
+    console.error('Error handling authenticated user:', error)
+    return NextResponse.json({
+      error: 'server_error',
+      error_description: 'Failed to generate authorization code'
+    }, { status: 500 })
+  }
+}
+
 export async function POST(request: NextRequest) {
-  // Handle authorization form submission
+  // Handle authorization form submission (consent page)
   return NextResponse.json({
     error: 'not_implemented',
     error_description: 'POST method for authorization endpoint not yet implemented'
