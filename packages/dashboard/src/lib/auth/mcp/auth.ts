@@ -1,24 +1,38 @@
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { db, mcpEndUser } from 'database'
+import {
+  db,
+  mcpEndUser,
+  mcpSession,
+  mcpAccount,
+  mcpVerification,
+  mcpOauthClient,
+  mcpOauthToken,
+  mcpOauthCode,
+  mcpOauthConsent
+} from 'database'
 
 // Create MCP-specific Better Auth instance using our existing schema
 export function createMCPAuth(serverId: string, organizationId: string) {
   return betterAuth({
+    basePath: '/mcp-oidc/auth',
+
     // Use drizzle adapter with our existing MCP schema
     database: drizzleAdapter(db, {
       provider: 'pg',
       schema: {
-        // Map Better Auth expected table names to our existing tables
+        // Core Better Auth tables (MCPlatform pattern)
         user: mcpEndUser,
-        // Better Auth will auto-create session and account tables if needed
+        session: mcpSession,
+        account: mcpAccount,
+        verification: mcpVerification,
+        // OAuth-specific tables (MCPlatform pattern)
+        oauthApplication: mcpOauthClient,
+        oauthAccessToken: mcpOauthToken,
+        oauthCode: mcpOauthCode,
+        oauthConsent: mcpOauthConsent,
       },
     }),
-
-    // Base URL will be set dynamically
-    baseURL: process.env.NODE_ENV === 'development'
-      ? `http://localhost:3000/mcp-oidc/auth`
-      : undefined,
 
     // End-user authentication providers
     emailAndPassword: {
@@ -60,7 +74,9 @@ export function createMCPAuth(serverId: string, organizationId: string) {
 
     // Advanced configuration
     advanced: {
-      generateId: () => crypto.randomUUID(),
+      database: {
+        generateId: () => crypto.randomUUID(),
+      },
       crossSubDomainCookies: {
         enabled: false,
       }

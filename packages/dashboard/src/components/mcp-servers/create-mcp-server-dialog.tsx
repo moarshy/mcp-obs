@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { createMcpServerAction, validateSlugAction } from '@/lib/orpc/actions/mcp-servers'
+import { createMcpServerAction } from '@/lib/orpc/actions/mcp-servers'
 import { Server, ExternalLink, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface CreateMcpServerDialogProps {
@@ -99,8 +99,20 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
     setSlugValidation({ isChecking: true, isAvailable: null, message: 'Checking availability...' })
 
     try {
-      // Call the server-side validation action
-      const result = await validateSlugAction({ slug })
+      // Call the API endpoint for slug validation
+      const response = await fetch('/api/mcp-servers/check-slug', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ slug }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to check slug availability')
+      }
 
       setSlugValidation({
         isChecking: false,

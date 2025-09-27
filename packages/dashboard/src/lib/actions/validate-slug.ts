@@ -4,8 +4,6 @@ import { db, mcpServer } from 'database'
 import { eq, and, ne } from 'drizzle-orm'
 
 export async function validateSlug(slug: string, excludeId?: string) {
-  console.log('🔍 validateSlug called with:', { slug, excludeId })
-
   try {
     // Check if slug is already taken globally (across all organizations)
     // Exclude the current server if we're editing
@@ -13,15 +11,11 @@ export async function validateSlug(slug: string, excludeId?: string) {
       ? and(eq(mcpServer.slug, slug), ne(mcpServer.id, excludeId))
       : eq(mcpServer.slug, slug)
 
-    console.log('🔍 Database query conditions:', whereConditions)
-
     const existingServer = await db
       .select({ id: mcpServer.id })
       .from(mcpServer)
       .where(whereConditions)
       .then(rows => rows[0])
-
-    console.log('🔍 Database query result:', existingServer)
 
     if (existingServer) {
       return {
@@ -44,13 +38,7 @@ export async function validateSlug(slug: string, excludeId?: string) {
       message: 'This subdomain is available!'
     }
   } catch (error) {
-    console.error('❌ Error validating slug:', error)
-    console.error('❌ Error details:', {
-      slug,
-      excludeId,
-      errorMessage: error instanceof Error ? error.message : String(error),
-      errorStack: error instanceof Error ? error.stack : undefined
-    })
+    console.error('Error validating slug:', error)
     return {
       available: false,
       message: 'Error checking slug availability. Please try again.'
