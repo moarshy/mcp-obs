@@ -97,6 +97,17 @@ bun run dev:server:streamable
 # Status: http://localhost:3004/status
 ```
 
+**OAuth-Protected Streamable HTTP Server**:
+```bash
+bun run demo:oauth
+# OR
+bun run dev:server:streamable:oauth
+# Endpoint: http://localhost:3005/mcp (OAuth required)
+# Health check: http://localhost:3005/health (public)
+# Status: http://localhost:3005/status (public)
+# Note: All /mcp requests require valid Bearer tokens from test.mcp-obs.com
+```
+
 **Stdio Client**:
 ```bash
 bun run dev:client
@@ -124,6 +135,7 @@ The demo implements a single MCP tool called `echo`:
   - Stdio: `hello from mcp-obs (stdio): {message}`
   - SSE: `hello from mcp-obs (SSE): {message}`
   - Streamable HTTP: `hello from mcp-obs (Streamable HTTP): {message}`
+  - OAuth Streamable HTTP: `hello from mcp-obs (OAuth Streamable HTTP): {message} (authenticated as: user@example.com)`
 
 ## Transport Types
 
@@ -144,6 +156,13 @@ The demo implements a single MCP tool called `echo`:
 - **Communication**: Single HTTP endpoint with bidirectional communication
 - **Benefits**: Resumable connections, better error handling, single endpoint architecture
 - **Status**: ✅ Current standard as of MCP v2025-03-26
+
+### 4. OAuth-Protected Streamable HTTP Transport
+- **Use Case**: Enterprise MCP servers requiring user authentication
+- **Communication**: Streamable HTTP with Bearer token authentication
+- **Authentication**: OAuth 2.0 via mcp-obs authorization server (test.mcp-obs.com)
+- **Benefits**: Enterprise security, user context, audit trails, centralized authentication
+- **Status**: ✅ Available with mcp-obs Server SDK
 
 ## Example Output
 
@@ -170,6 +189,7 @@ The demo MCP servers can be used with Cursor IDE:
 2. **Available servers**:
    - `demo-mcp-obs-stdio`: Process-based (always available)
    - `demo-mcp-obs-streamable`: HTTP-based (requires `bun run dev:server:streamable`)
+   - `demo-mcp-obs-oauth`: OAuth-protected HTTP-based (requires `bun run demo:oauth`)
 
 **Usage in Cursor**:
 - Restart Cursor and open this project
@@ -177,7 +197,39 @@ The demo MCP servers can be used with Cursor IDE:
   - Response: `hello from mcp-obs (stdio): {your message}`
 - Use `@demo-mcp-obs-streamable` for Streamable HTTP transport (start server first)
   - Response: `hello from mcp-obs (Streamable HTTP): {your message}`
-- Both provide the same `echo` tool interface
+- Use `@demo-mcp-obs-oauth` for OAuth-protected Streamable HTTP transport (start server first)
+  - Response: `hello from mcp-obs (OAuth Streamable HTTP): {your message} (authenticated as: user@example.com)`
+  - Note: Requires valid OAuth tokens - see OAuth Setup section
+- All provide the same `echo` tool interface
+
+## OAuth Setup (for OAuth Demo)
+
+The OAuth-protected server requires the mcp-obs dashboard to be running for authentication:
+
+1. **Start the mcp-obs dashboard** (in a separate terminal):
+   ```bash
+   cd packages/dashboard
+   bun dev
+   # Dashboard runs at http://localhost:3000
+   ```
+
+2. **Start the OAuth demo server**:
+   ```bash
+   cd demo-mcp
+   bun run demo:oauth
+   # OAuth server runs at http://localhost:3005
+   ```
+
+3. **OAuth Configuration**:
+   - **Introspection Endpoint**: `http://localhost:3000/api/mcp-oauth/introspect`
+   - **Audience**: `http://localhost:3000`
+   - **Server Slug**: `test`
+   - **Required**: Valid Bearer tokens from localhost:3000 dashboard
+
+4. **Testing OAuth**:
+   - All `/mcp` endpoint requests require `Authorization: Bearer <token>` header
+   - Health and status endpoints are public (no OAuth required)
+   - Use the dashboard to generate OAuth tokens for testing
 
 ## Development
 

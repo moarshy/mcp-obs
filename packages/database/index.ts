@@ -22,3 +22,17 @@ export const db = drizzle(dbUrl, {
 export * from './src/auth-schema'
 export * from './src/mcp-auth-schema'
 export * from './src/schema'
+
+// Re-export OAuth validation functions from dashboard package for server SDK usage
+export {
+  validateAccessToken,
+  introspectToken,
+  checkTokenScope,
+  extractUserFromToken,
+  generateWWWAuthenticateHeader,
+  type TokenValidationResult,
+  type TokenIntrospectionResponse
+} from '../dashboard/src/lib/mcp-oauth/token-validation'
+
+// Re-export MCP server utilities
+export { getMcpServerBySlug } from '../dashboard/src/lib/mcp-server-utils'

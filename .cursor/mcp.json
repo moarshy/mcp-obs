@@ -15,6 +15,10 @@
     "demo-mcp-obs-streamable": {
       "url": "http://localhost:3004/mcp",
       "description": "Demo MCP server (Streamable HTTP) with echo tool that responds 'hello from mcp-obs (Streamable HTTP): {message}' - requires server running"
+    },
+    "demo-mcp-obs-oauth11": {
+      "url": "http://localhost:3005/mcp",
+      "description": "Demo MCP server (OAuth Streamable HTTP) with echo tool that responds 'hello from mcp-obs (OAuth Streamable HTTP): {message} (authenticated as: user@example.com)' - requires OAuth server running and valid Bearer tokens"
     }
   }
 }

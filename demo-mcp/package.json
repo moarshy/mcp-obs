@@ -5,22 +5,26 @@
   "type": "module",
   "scripts": {
     "build": "tsc --build server client",
-    "dev:server": "tsx server/src/index.ts",
-    "dev:server:http": "tsx server/src/http-server.ts",
-    "dev:server:streamable": "tsx server/src/streamable-http-server.ts",
-    "dev:client": "tsx client/src/index.ts",
-    "dev:client:http": "tsx client/src/http-client.ts",
-    "dev:client:streamable": "tsx client/src/streamable-http-client.ts",
+    "dev:server": "bun --bun server/src/index.ts",
+    "dev:server:http": "bun --bun server/src/http-server.ts",
+    "dev:server:streamable": "bun --bun server/src/streamable-http-server.ts",
+    "dev:client": "bun --bun client/src/index.ts",
+    "dev:client:http": "bun --bun client/src/http-client.ts",
+    "dev:client:streamable": "bun --bun client/src/streamable-http-client.ts",
+    "dev:server:streamable:oauth": "bun --bun server/src/streamable-http-server-oauth.ts",
     "start:server": "node server/dist/index.js",
     "start:server:http": "node server/dist/http-server.js",
+    "start:server:streamable:oauth": "node server/dist/streamable-http-server-oauth.js",
     "start:client": "node client/dist/index.js",
     "start:client:http": "node client/dist/http-client.js",
     "demo": "npm run dev:client",
     "demo:http": "npm run dev:client:http",
-    "demo:streamable": "npm run dev:client:streamable"
+    "demo:streamable": "npm run dev:client:streamable",
+    "demo:oauth": "npm run dev:server:streamable:oauth"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1",
+    "@mcp-obs/server-sdk": "workspace:*",
     "express": "^4.18.0",
     "cors": "^2.8.5"
   },

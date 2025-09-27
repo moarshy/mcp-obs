@@ -4,7 +4,12 @@ import { getOAuthClient } from '@/lib/mcp-oauth/client-registration'
 import { getMcpServerBySlug } from '@/lib/mcp-server-utils'
 import { headers } from 'next/headers'
 
-async function getMcpServerContext(request: NextRequest) {
+async function getMcpServerContext(request: NextRequest, serverSlug?: string) {
+  // Try server_slug from request body first (for SDK requests)
+  if (serverSlug) {
+    return await getMcpServerBySlug(serverSlug)
+  }
+
   // Try to get MCP server ID from query parameters (set by middleware)
   const mcpServerId = request.nextUrl.searchParams.get('mcp_server_id')
 
@@ -45,27 +50,13 @@ async function getMcpServerContext(request: NextRequest) {
 // POST /oauth/introspect - RFC 7662 Token Introspection
 export async function POST(request: NextRequest) {
   try {
-    const mcpServer = await getMcpServerContext(request)
-
-    if (!mcpServer) {
-      return NextResponse.json(
-        {
-          error: 'invalid_server',
-          error_description: 'MCP server not found'
-        },
-        { status: 404 }
-      )
-    }
-
-    // Parse request body
+    // Parse request body first to get server_slug if provided
     let requestBody: Record<string, any>
-
     const contentType = request.headers.get('content-type') || ''
 
     if (contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await request.formData()
       requestBody = {}
-
       formData.forEach((value, key) => {
         requestBody[key] = value
       })
@@ -81,7 +72,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { token, token_type_hint, client_id, client_secret } = requestBody
+    const mcpServer = await getMcpServerContext(request, requestBody.server_slug)
+
+    if (!mcpServer) {
+      return NextResponse.json(
+        {
+          error: 'invalid_server',
+          error_description: 'MCP server not found'
+        },
+        { status: 404 }
+      )
+    }
+
+
+    const { token, token_type_hint, client_id, client_secret, server_slug } = requestBody
 
     if (!token) {
       return NextResponse.json(
