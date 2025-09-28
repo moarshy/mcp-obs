@@ -1,24 +1,8 @@
 {
   "mcpServers": {
-    "demo-mcp-obs-stdio": {
-      "command": "/Users/arshath/play/naptha/mcp-obs/demo-mcp/node_modules/.bin/tsx",
-      "args": [
-        "/Users/arshath/play/naptha/mcp-obs/demo-mcp/server/src/index.ts"
-      ],
-      "cwd": "/Users/arshath/play/naptha/mcp-obs/demo-mcp",
-      "description": "Demo MCP server (stdio) with echo tool that responds 'hello from mcp-obs (stdio): {message}'"
-    },
-    "demo-mcp-obs-sse": {
-      "url": "http://localhost:3003/sse",
-      "description": "Demo MCP server (SSE) with echo tool that responds 'hello from mcp-obs (SSE): {message}' - requires server running"
-    },
-    "demo-mcp-obs-streamable": {
-      "url": "http://localhost:3004/mcp",
-      "description": "Demo MCP server (Streamable HTTP) with echo tool that responds 'hello from mcp-obs (Streamable HTTP): {message}' - requires server running"
-    },
-    "demo-mcp-obs-oauth21": {
-      "url": "http://localhost:3005/mcp",
-      "description": "Demo MCP server (OAuth Streamable HTTP) with echo tool that responds 'hello from mcp-obs (OAuth Streamable HTTP): {message} (authenticated as: user@example.com)' - requires OAuth server running and valid Bearer tokens"
+    "demo-mcp2": {
+      "description": "Demo MCP server with echo tool that responds 'hello from mcp-obs (OAuth Streamable HTTP): {message} (authenticated as: user@example.com)' - requires OAuth server running and valid Bearer tokens",
+      "url": "http://localhost:3005/mcp"
     }
   }
 }
