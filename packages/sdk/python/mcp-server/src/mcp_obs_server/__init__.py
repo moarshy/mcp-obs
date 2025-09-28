@@ -40,6 +40,13 @@ from .transport_adapters import (
     create_oauth_config
 )
 
+# FastMCP integration
+from .fastmcp_provider import (
+    McpObsProvider,
+    McpObsTokenVerifier,
+    create_mcp_obs_auth
+)
+
 __version__ = "0.1.0"
 
 __all__ = [
@@ -74,6 +81,11 @@ __all__ = [
     "FlaskMiddleware",
     "create_oauth_adapter",
     "create_oauth_config",
+
+    # FastMCP integration
+    "McpObsProvider",
+    "McpObsTokenVerifier",
+    "create_mcp_obs_auth",
 
     # Version
     "__version__"
