@@ -13,6 +13,7 @@ dependencies = [
     "httpx>=0.25.0",
     # Local mcp-obs SDK dependency
     "mcp-obs-server",
+    "fastapi>=0.117.1",
 ]
 
 [project.optional-dependencies]

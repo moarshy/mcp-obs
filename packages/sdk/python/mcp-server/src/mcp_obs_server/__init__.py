@@ -40,12 +40,8 @@ from .transport_adapters import (
     create_oauth_config
 )
 
-# FastMCP integration
-from .fastmcp_provider import (
-    McpObsProvider,
-    McpObsTokenVerifier,
-    create_mcp_obs_auth
-)
+# Main SDK class
+from .mcp_obs_sdk import McpObsSDK
 
 __version__ = "0.1.0"
 
@@ -82,10 +78,8 @@ __all__ = [
     "create_oauth_adapter",
     "create_oauth_config",
 
-    # FastMCP integration
-    "McpObsProvider",
-    "McpObsTokenVerifier",
-    "create_mcp_obs_auth",
+    # Main SDK class
+    "McpObsSDK",
 
     # Version
     "__version__"

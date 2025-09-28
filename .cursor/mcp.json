@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "demo-mcp2": {
+    "demo-mcp10": {
       "description": "Demo MCP server with echo tool that responds 'hello from mcp-obs (OAuth Streamable HTTP): {message} (authenticated as: user@example.com)' - requires OAuth server running and valid Bearer tokens",
-      "url": "http://localhost:3005/mcp"
+      "url": "http://localhost:3007/mcp"
     }
   }
 }
