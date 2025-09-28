@@ -12,7 +12,7 @@ from mcp_obs_server.fastmcp_integration import create_fastmcp_with_oauth
 
 # Configuration
 SERVER_NAME = "FastMCP Demo Server with OAuth"
-PORT = 3007  # Different port to avoid conflicts
+PORT = 3006  # Different port to avoid conflicts
 
 # Create FastMCP server with OAuth - following official MCP SDK pattern!
 app = create_fastmcp_with_oauth(
@@ -20,7 +20,7 @@ app = create_fastmcp_with_oauth(
     server_slug="test",        # Maps to test subdomain
     platform_url="http://localhost:3000",  # Local mcp-obs platform
     port=PORT,
-    required_scopes=["read,write"],  # Explicitly set required scopes
+    required_scopes=["read", "write"],  # Explicitly set required scopes
     debug=True                 # Enable debug logging
 )
 
