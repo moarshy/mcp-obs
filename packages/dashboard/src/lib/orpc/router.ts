@@ -8,4 +8,6 @@ export const base = os.errors({
   SUBDOMAIN_ALREADY_EXISTS: {},
   ORGANIZATION_NOT_FOUND: {},
   INSUFFICIENT_PERMISSIONS: {},
+  BAD_REQUEST: {},
+  INTERNAL_SERVER_ERROR: {},
 })
