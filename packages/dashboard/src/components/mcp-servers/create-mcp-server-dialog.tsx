@@ -100,7 +100,7 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
 
     try {
       // Call the API endpoint for slug validation
-      const response = await fetch('/api/mcp-servers/check-slug', {
+      const response = await fetch('/api/mcpserver/check-slug', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
