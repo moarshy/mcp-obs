@@ -16,6 +16,7 @@ import express from "express";
 import cors from "cors";
 import { randomUUID } from "crypto";
 import { McpObsSDK, type AuthContext } from "@mcp-obs/server-sdk";
+import { autoRegisterSupportTool } from "@mcp-obs/server-sdk/support-tool";
 
 interface EchoArgs {
   message?: string;
@@ -98,6 +99,11 @@ function createMCPServer(sessionId: string): Server {
     }
   );
 
+  // Auto-register support tool if enabled
+  autoRegisterSupportTool(server, "test", "http://localhost:3000", true).catch(error => {
+    console.error("Failed to auto-register support tool:", error);
+  });
+
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
@@ -172,6 +178,8 @@ function createMCPServer(sessionId: string): Server {
         ],
       };
     }
+
+    // Support tool calls are now handled automatically by the SDK
 
     throw new Error(`Unknown tool: ${request.params.name}`);
   });
@@ -296,6 +304,9 @@ async function main() {
 
   // Initialize OAuth adapter
   oauthAdapter = await mcpObs.createOAuthMiddleware('streamable-http');
+
+  // Auto-register support tool if enabled (no manual configuration needed!)
+  // The SDK will fetch server config and register tools automatically
 
   // OAuth middleware for all MCP endpoints (but skip health/status)
   app.use('/mcp', oauthAdapter.expressMiddleware());

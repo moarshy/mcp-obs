@@ -58,15 +58,15 @@ async function validateOAuthToken(request: NextRequest, serverConfig: any) {
   try {
     // Use existing token validation from database package
     const { validateAccessToken } = await import('database')
-    const validationResult = await validateAccessToken(token, serverConfig.id)
+    const validationResult = await validateAccessToken(serverConfig.id, token)
 
     if (!validationResult.valid) {
       return null
     }
 
     return {
-      mcpUserId: validationResult.userId,
-      sessionId: validationResult.sessionId,
+      mcpUserId: validationResult.user?.id || null,
+      sessionId: validationResult.token?.id || null, // Use token ID as session ID
     }
   } catch (error) {
     console.error('Token validation error:', error)

@@ -248,6 +248,81 @@ function extractBearerToken(authHeader: string): string | null {
 }
 
 /**
+ * Fetch server configuration from mcp-obs platform
+ */
+async function fetchServerConfig(serverSlug: string, platformUrl: string): Promise<any> {
+  try {
+    const configEndpoint = `${platformUrl}/api/mcpserver/config`;
+    const response = await fetch(`${configEndpoint}?slug=${serverSlug}`, {
+      headers: {
+        'User-Agent': 'mcp-obs-sdk-typescript/1.0.0'
+      }
+    });
+
+    if (response.ok) {
+      return response.json();
+    } else {
+      console.warn(`Failed to fetch server config: ${response.status}`);
+      return {};
+    }
+  } catch (error) {
+    console.error('Error fetching server config:', error);
+    return {};
+  }
+}
+
+/**
+ * Automatically register support tool if enabled in server configuration
+ * This is called by SDK integrations to provide zero-configuration support tools
+ */
+export async function autoRegisterSupportTool(
+  server: any, // MCP Server instance
+  serverSlug: string,
+  platformUrl: string,
+  debug: boolean = false
+): Promise<void> {
+  try {
+    // Fetch server configuration
+    const serverConfig = await fetchServerConfig(serverSlug, platformUrl);
+
+    if (!serverConfig.supportToolEnabled) {
+      if (debug) {
+        console.log('ℹ️ [mcp-obs] Support tool not enabled, skipping registration');
+      }
+      return;
+    }
+
+    if (debug) {
+      console.log('🔧 [mcp-obs] Auto-registering support tool...');
+    }
+
+    // Create configuration from server settings
+    const config: SupportToolConfig = {
+      enabled: true,
+      title: serverConfig.supportToolTitle || 'Get Support',
+      description: serverConfig.supportToolDescription || 'Report issues or ask questions',
+      categories: serverConfig.supportToolCategories || ['Bug Report', 'Feature Request', 'Documentation', 'Other'],
+      serverSlug: serverSlug
+    };
+
+    // Register the support tool
+    await registerSupportTool(server, config);
+
+    if (debug) {
+      console.log(`✅ [mcp-obs] Support tool registered: ${config.title}`);
+      console.log(`   Categories: ${config.categories}`);
+      console.log(`   Description: ${config.description}`);
+    }
+
+  } catch (error) {
+    if (debug) {
+      console.error('❌ [mcp-obs] Failed to auto-register support tool:', error);
+    }
+    // Continue without support tool - don't fail server startup
+  }
+}
+
+/**
  * Utility function to register support tool with an MCP Server instance
  */
 export async function registerSupportTool(
