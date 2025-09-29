@@ -43,6 +43,15 @@ from .transport_adapters import (
 # Main SDK class
 from .mcp_obs_sdk import McpObsSDK
 
+# Support tool functionality
+from .support_tool import (
+    SupportToolConfig,
+    SupportToolHandler,
+    create_support_tool_handler,
+    register_support_tool,
+    configure_oauth_mcp_server
+)
+
 __version__ = "0.1.0"
 
 __all__ = [
@@ -80,6 +89,13 @@ __all__ = [
 
     # Main SDK class
     "McpObsSDK",
+
+    # Support tool functionality
+    "SupportToolConfig",
+    "SupportToolHandler",
+    "create_support_tool_handler",
+    "register_support_tool",
+    "configure_oauth_mcp_server",
 
     # Version
     "__version__"
