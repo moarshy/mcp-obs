@@ -60,14 +60,15 @@
 bun install           # Install all dependencies
 
 # Development
-bun dev               # Start development server
+bun dev               # Start development server (REQUIRED for database operations)
 bun run build         # Build all packages and dashboard
 bun run lint          # Run ESLint
 bun run type-check    # TypeScript checking across all packages
 
-# Database commands (when DATABASE_URL is configured)
-bun run db:generate   # Generate migrations
-bun run db:migrate    # Run migrations
+# Database commands (requires `bun dev` running in separate terminal)
+bun sst shell -- bun run db:generate   # Generate migrations
+bun sst shell -- bun run db:migrate    # Run migrations
+bun sst shell -- bun run studio        # Open Drizzle Studio
 ```
 
 ### Current Implementation Status
