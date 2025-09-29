@@ -22,6 +22,13 @@ export interface OAuthMiddlewareConfig extends OAuthConfig {
   requiredScopes?: string[];
   /** Skip OAuth validation for specific tools */
   skipValidationFor?: string[];
+  /** Support tool configuration */
+  supportTool?: {
+    enabled?: boolean;
+    title?: string;
+    description?: string;
+    categories?: string[];
+  };
 }
 
 export type AuthenticatedHandler<T extends MCPRequest> = (
@@ -251,4 +258,38 @@ export function getRequestCorrelationId(request: MCPRequest): string {
 
   // Generate new correlation ID
   return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Configure MCP server with OAuth middleware and optional support tool
+ * This is the main integration function that sets up both authentication and support
+ */
+export async function configureOAuthMCPServer(
+  server: any, // MCP Server instance
+  config: OAuthMiddlewareConfig
+): Promise<void> {
+  // Configure OAuth validator
+  configureOAuthValidator(config);
+
+  // Register support tool if enabled
+  if (config.supportTool?.enabled) {
+    const { registerSupportTool } = await import('./support-tool.js');
+
+    await registerSupportTool(server, {
+      enabled: true,
+      title: config.supportTool.title,
+      description: config.supportTool.description,
+      categories: config.supportTool.categories,
+      serverSlug: config.serverSlug,
+      serverId: config.serverId
+    });
+
+    // Add support tool to skip validation list if not already there
+    if (!config.skipValidationFor?.includes('get_support_tool')) {
+      config.skipValidationFor = [...(config.skipValidationFor || []), 'get_support_tool'];
+    }
+  }
+
+  console.log('✅ MCP Server configured with OAuth middleware' +
+    (config.supportTool?.enabled ? ' and support tool' : ''));
 }

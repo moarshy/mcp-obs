@@ -10,6 +10,9 @@ export * from "./src/oauth-validator.js";
 export * from "./src/oauth-middleware.js";
 export * from "./src/transport-adapters.js";
 
+// Support tool exports
+export * from "./src/support-tool.js";
+
 export interface MCPServerConfig {
   serverName: string
   version: string
