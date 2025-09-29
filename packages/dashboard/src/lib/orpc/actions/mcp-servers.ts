@@ -12,6 +12,10 @@ const createMcpServerSchema = z.object({
   slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens'),
   description: z.string().optional(),
   platformAuthEnabled: z.boolean().default(true),
+  supportToolEnabled: z.boolean().default(false),
+  supportToolTitle: z.string().optional(),
+  supportToolDescription: z.string().optional(),
+  supportToolCategories: z.string().optional(),
 })
 
 const updateMcpServerSchema = z.object({
@@ -93,6 +97,11 @@ export const createMcpServerAction = base
         enablePasswordAuth: input.platformAuthEnabled, // Enable if auth is on
         enableGoogleAuth: input.platformAuthEnabled, // Enable all social providers by default
         enableGithubAuth: input.platformAuthEnabled,
+        // Support tool configuration
+        supportToolEnabled: input.supportToolEnabled,
+        supportToolTitle: input.supportToolTitle || 'Get Support',
+        supportToolDescription: input.supportToolDescription || 'Report issues or ask questions',
+        supportToolCategories: input.supportToolCategories || '["Bug Report", "Feature Request", "Documentation", "Other"]',
       }).returning()
 
       // 4. Cache revalidation (CRITICAL)

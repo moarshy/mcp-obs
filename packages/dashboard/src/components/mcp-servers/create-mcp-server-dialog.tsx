@@ -45,6 +45,10 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
     slug: '',
     description: '',
     platformAuthEnabled: true, // Simple toggle for platform auth
+    supportToolEnabled: false,
+    supportToolTitle: 'Get Support',
+    supportToolDescription: 'Report issues or ask questions',
+    supportToolCategories: 'Bug Report,Feature Request,Documentation,Other',
   })
 
   const router = useRouter()
@@ -148,6 +152,10 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
         slug: formData.slug,
         description: formData.description,
         platformAuthEnabled: formData.platformAuthEnabled,
+        supportToolEnabled: formData.supportToolEnabled,
+        supportToolTitle: formData.supportToolTitle,
+        supportToolDescription: formData.supportToolDescription,
+        supportToolCategories: formData.supportToolCategories,
       })
 
       setOpen(false)
@@ -156,6 +164,10 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
         slug: '',
         description: '',
         platformAuthEnabled: true,
+        supportToolEnabled: false,
+        supportToolTitle: 'Get Support',
+        supportToolDescription: 'Report issues or ask questions',
+        supportToolCategories: 'Bug Report,Feature Request,Documentation,Other',
       })
       setSlugValidation({ isChecking: false, isAvailable: null, message: '' })
 
@@ -295,6 +307,83 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
                   </p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Support Tool Configuration */}
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-sm font-medium mb-3">Support Tool</h4>
+              <div className="flex items-center space-x-2 mb-4">
+                <Checkbox
+                  id="supportToolEnabled"
+                  checked={formData.supportToolEnabled}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, supportToolEnabled: checked === true }))
+                  }
+                  disabled={isLoading}
+                />
+                <div>
+                  <Label htmlFor="supportToolEnabled" className="text-sm font-medium">
+                    Enable support tool
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Automatically adds a support tool to your MCP server, allowing users to create tickets directly through tool calls.
+                  </p>
+                </div>
+              </div>
+
+              {formData.supportToolEnabled && (
+                <div className="ml-6 space-y-4 p-4 border rounded-lg">
+                  <div>
+                    <Label htmlFor="supportToolTitle">Tool Title</Label>
+                    <Input
+                      id="supportToolTitle"
+                      value={formData.supportToolTitle}
+                      onChange={(e) => setFormData(prev => ({ ...prev, supportToolTitle: e.target.value }))}
+                      placeholder="Get Support"
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="supportToolDescription">Tool Description</Label>
+                    <Input
+                      id="supportToolDescription"
+                      value={formData.supportToolDescription}
+                      onChange={(e) => setFormData(prev => ({ ...prev, supportToolDescription: e.target.value }))}
+                      placeholder="Report issues or ask questions"
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="supportToolCategories">Available Categories</Label>
+                    <Input
+                      id="supportToolCategories"
+                      value={formData.supportToolCategories}
+                      onChange={(e) => setFormData(prev => ({ ...prev, supportToolCategories: e.target.value }))}
+                      placeholder="Bug Report,Feature Request,Documentation,Other"
+                      disabled={isLoading}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Comma-separated list of available ticket categories
+                    </p>
+                  </div>
+
+                  <div className="flex items-center p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex-shrink-0">
+                      <CheckCircle className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div className="ml-2 text-sm text-blue-700 dark:text-blue-300">
+                      When enabled, a "get_support_tool" will be automatically registered with your MCP server,
+                      allowing users to create support tickets through natural language interactions.
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

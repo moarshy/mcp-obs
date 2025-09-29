@@ -12,7 +12,8 @@ import {
   Search,
   ChevronDown,
   Building2,
-  Server
+  Server,
+  MessageSquare
 } from 'lucide-react'
 import appIcon from '@/assets/appicon.png'
 import { CreateOrganizationDialog } from '@/components/organization/create-organization-dialog'
@@ -45,6 +46,12 @@ const sidebarItems = [
     name: 'MCP Servers',
     href: '/dashboard/mcp-servers',
     icon: Server,
+    current: false
+  },
+  {
+    name: 'Support Tickets',
+    href: '/dashboard/support-tickets',
+    icon: MessageSquare,
     current: false
   }
 ]
