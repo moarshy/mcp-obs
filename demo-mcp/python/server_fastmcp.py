@@ -40,6 +40,8 @@ def get_server_info() -> str:
     "token_introspection": "RFC 7662 via mcp-obs platform"
 }}"""
 
+# Support tool will be auto-registered by the SDK if enabled in dashboard!
+
 if __name__ == "__main__":
     print("🚀 Starting FastMCP Server with Official MCP SDK OAuth")
     print(f"📡 Server: {SERVER_NAME}")

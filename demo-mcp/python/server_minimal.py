@@ -18,6 +18,7 @@ from mcp.types import Tool, TextContent, CallToolResult, ListToolsResult
 
 # Our mcp-obs SDK - this does all the heavy lifting!
 from mcp_obs_server import McpObsSDK
+from mcp_obs_server.support_tool import create_support_tool_handler, SupportTicketRequest
 
 # Configuration - matches TypeScript demo exactly
 SERVER_NAME = "Demo MCP Python Server with OAuth"
@@ -78,6 +79,13 @@ app.add_middleware(
 # Create MCP server instance
 mcp_server = Server(SERVER_NAME, version=SERVER_VERSION)
 
+# Create support tool handler
+support_tool_handler = create_support_tool_handler({
+    "title": "Get Demo Support",
+    "description": "Report issues or ask questions about the demo MCP server",
+    "categories": ["Bug Report", "Feature Request", "Demo Question", "Other"]
+})
+
 # Register MCP tools
 @mcp_server.list_tools()
 async def list_tools() -> ListToolsResult:
@@ -104,7 +112,8 @@ async def list_tools() -> ListToolsResult:
                     "type": "object",
                     "properties": {},
                 }
-            )
+            ),
+            support_tool_handler.tool_definition
         ]
     )
 
@@ -132,6 +141,18 @@ async def call_tool(name: str, arguments: dict) -> CallToolResult:
                         "sdk": "mcp-obs Python SDK",
                         "note": "User info available via request.state.auth_context"
                     }, indent=2)
+                )
+            ]
+        )
+    elif name == support_tool_handler.tool_name:
+        # Handle support ticket creation
+        ticket_request = SupportTicketRequest(**arguments)
+        result = await support_tool_handler.handle_call(ticket_request)
+        return CallToolResult(
+            content=[
+                TextContent(
+                    type="text",
+                    text=result
                 )
             ]
         )

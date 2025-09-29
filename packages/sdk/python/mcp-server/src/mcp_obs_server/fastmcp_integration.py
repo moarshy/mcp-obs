@@ -7,11 +7,16 @@ from typing import Optional, List, Dict, Any
 from mcp.server.auth.provider import TokenVerifier, AccessToken
 from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp.server import FastMCP
+from mcp.server.fastmcp import Context
+from mcp.server.session import ServerSession
 import httpx
 import logging
+import asyncio
+import time
 
 from .oauth_validator import OAuthTokenValidator
 from .types import AuthContext
+from .support_tool import create_support_tool_handler, SupportToolConfig
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +45,19 @@ class McpObsTokenVerifier(TokenVerifier):
         # Build introspection endpoint
         self.introspection_endpoint = f"{platform_url}/api/mcp-oauth/introspect"
 
+        # Store current token for tool access
+        self._current_token = None
+
     async def verify_token(self, token: str) -> Optional[AccessToken]:
         """Verify token via mcp-obs platform introspection"""
 
         if self.debug:
             logger.info(f"🔍 [mcp-obs] Verifying token via {self.introspection_endpoint}")
+
+        # Store the current token for tool access
+        self._current_token = token
+        if self.debug:
+            logger.info(f"🔍 [mcp-obs] Stored token in TokenVerifier instance {id(self)}: {token[:20]}...")
 
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -112,6 +125,197 @@ class McpObsTokenVerifier(TokenVerifier):
 
         # Simple validation - in production you might want hierarchical matching
         return self.server_url in aud if isinstance(aud, list) else aud == self.server_url
+
+    def get_current_token(self) -> Optional[str]:
+        """Get the current authenticated token"""
+        return self._current_token
+
+
+async def fetch_server_config(server_slug: str, platform_url: str, debug: bool = False) -> Dict[str, Any]:
+    """Fetch server configuration from mcp-obs platform"""
+    try:
+        # Build API endpoint
+        config_endpoint = f"{platform_url}/api/mcpserver/config"
+
+        if debug:
+            logger.info(f"🔍 [mcp-obs] Fetching server config from {config_endpoint}")
+
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                config_endpoint,
+                params={"slug": server_slug},
+                headers={"User-Agent": "mcp-obs-sdk-python/1.0.0"}
+            )
+
+            if response.status_code == 200:
+                config = response.json()
+                if debug:
+                    logger.info(f"✅ [mcp-obs] Server config loaded: support_tool_enabled={config.get('supportToolEnabled', False)}")
+                return config
+            else:
+                if debug:
+                    logger.warning(f"❌ [mcp-obs] Failed to fetch server config: {response.status_code}")
+                return {}
+
+    except Exception as e:
+        if debug:
+            logger.error(f"❌ [mcp-obs] Error fetching server config: {e}")
+        return {}
+
+
+def auto_register_support_tool(app: FastMCP, server_config: Dict[str, Any], server_slug: str, platform_url: str, token_verifier: McpObsTokenVerifier = None, debug: bool = False):
+    """Automatically register support tool if enabled in server configuration"""
+
+    if not server_config.get('supportToolEnabled', False):
+        if debug:
+            logger.info("ℹ️ [mcp-obs] Support tool not enabled, skipping registration")
+        return
+
+    if debug:
+        logger.info("🔧 [mcp-obs] Auto-registering support tool...")
+
+    # Store token verifier on app instance for tool access
+    app._mcp_obs_token_verifier = token_verifier
+
+    # Extract configuration
+    support_config = SupportToolConfig(
+        enabled=True,
+        title=server_config.get('supportToolTitle', 'Get Support'),
+        description=server_config.get('supportToolDescription', 'Report issues or ask questions'),
+        categories=server_config.get('supportToolCategories', ["Bug Report", "Feature Request", "Documentation", "Other"]),
+        server_slug=server_slug
+    )
+
+    # Create handler
+    support_handler = create_support_tool_handler(support_config)
+
+    # Register as FastMCP tool with authentication context
+    @app.tool()
+    async def get_support_tool(
+        title: str,
+        description: str,
+        category: str = "Other",
+        userEmail: str = "",
+        ctx: Context[ServerSession, None] = None
+    ) -> str:
+        """Report issues or ask questions (auto-registered by mcp-obs SDK)"""
+
+        try:
+            # Make direct API call to support endpoint with proper authentication
+            api_url = f"{platform_url}/api/mcpserver/support"
+
+            # Prepare payload
+            payload = {
+                "title": title.strip(),
+                "description": description.strip(),
+                "category": category,
+                "toolCall": {
+                    "name": "get_support_tool",
+                    "arguments": {
+                        "title": title,
+                        "description": description,
+                        "category": category,
+                        "userEmail": userEmail
+                    },
+                    "timestamp": int(time.time() * 1000)
+                }
+            }
+
+            # Prepare headers
+            headers = {
+                'Content-Type': 'application/json',
+                'User-Agent': 'mcp-obs-sdk-python/1.0.0'
+            }
+
+            # Try to get authentication token from app's stored token verifier
+            auth_token = None
+            app_token_verifier = getattr(app, '_mcp_obs_token_verifier', None)
+
+            if debug and ctx:
+                await ctx.info(f"🔍 [mcp-obs] Looking for TokenVerifier on app instance...")
+                await ctx.info(f"🔍 [mcp-obs] TokenVerifier found: {'YES' if app_token_verifier else 'NO'}")
+
+            if app_token_verifier:
+                try:
+                    auth_token = app_token_verifier.get_current_token()
+                    if debug and ctx:
+                        await ctx.info(f"🔍 [mcp-obs] TokenVerifier instance: {id(app_token_verifier)}")
+                        await ctx.info(f"🔍 [mcp-obs] Current token from TokenVerifier: {'FOUND' if auth_token else 'NOT_FOUND'}")
+                        if auth_token:
+                            await ctx.info(f"🔍 [mcp-obs] Token preview: {auth_token[:20]}...")
+                            await ctx.info("✅ [mcp-obs] Using OAuth token from TokenVerifier for support ticket")
+                        else:
+                            await ctx.info("⚠️ [mcp-obs] No current token available from TokenVerifier")
+                except Exception as e:
+                    if debug and ctx:
+                        await ctx.info(f"⚠️ [mcp-obs] Error accessing token from TokenVerifier: {e}")
+            elif debug and ctx:
+                await ctx.info("⚠️ [mcp-obs] No TokenVerifier found on app instance")
+
+            # Add Authorization header if we have a token
+            if auth_token:
+                headers['Authorization'] = f'Bearer {auth_token}'
+            else:
+                # Fallback to email if no OAuth token
+                if not userEmail:
+                    return f"❌ Authentication required or email needed.\n\n" \
+                           f"Please provide your email address using the userEmail parameter " \
+                           f"so we can follow up on your support request.\n\n" \
+                           f"Example: get_support_tool(title='Issue title', description='Issue description', userEmail='your@email.com')"
+
+                # Add email to payload for email-based ticket creation
+                payload["userEmail"] = userEmail
+                if debug and ctx:
+                    await ctx.info(f"ℹ️ [mcp-obs] Using email fallback for support ticket: {userEmail}")
+
+            # Make HTTP request
+            if debug and ctx:
+                await ctx.info(f"🌐 [mcp-obs] Making API request to: {api_url}")
+                await ctx.info(f"🔑 [mcp-obs] Authorization header: {'Bearer ***' if 'Authorization' in headers else 'NONE'}")
+
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(api_url, json=payload, headers=headers)
+
+                if response.status_code == 201:
+                    result = response.json()
+                    ticket = result.get('ticket', {})
+                    return f"✅ Support ticket created successfully!\n\n" \
+                           f"Ticket ID: {ticket.get('id', 'Unknown')}\n" \
+                           f"Status: {ticket.get('status', 'open')}\n" \
+                           f"Category: {ticket.get('category', category)}\n\n" \
+                           f"Your request has been submitted and you should expect a response soon. Thank you for your feedback!"
+                elif response.status_code == 400:
+                    try:
+                        error_data = response.json()
+                        error_message = error_data.get('error', f'HTTP {response.status_code}: Bad Request')
+                    except:
+                        error_message = f'HTTP {response.status_code}: Bad Request'
+
+                    # If authentication failed and no email provided, suggest email
+                    if 'email' in error_message.lower() and not userEmail:
+                        return f"❌ Authentication required or email needed.\n\n" \
+                               f"Please provide your email address using the userEmail parameter, or ensure you're authenticated with the MCP server.\n\n" \
+                               f"Error: {error_message}"
+                    else:
+                        return f"❌ Failed to create support ticket: {error_message}"
+                else:
+                    try:
+                        error_data = response.json()
+                        error_message = error_data.get('error', f'HTTP {response.status_code}: {response.reason_phrase}')
+                    except:
+                        error_message = f'HTTP {response.status_code}: {response.reason_phrase}'
+                    return f"❌ Failed to create support ticket: {error_message}"
+
+        except Exception as e:
+            if debug:
+                logger.error(f"❌ [mcp-obs] Support tool error: {e}")
+            return f"❌ Error creating support ticket: {str(e)}\n\n" \
+                   f"Please try again or contact support directly if the problem persists."
+
+    if debug:
+        logger.info(f"✅ [mcp-obs] Support tool registered: {support_config.title}")
+        logger.info(f"   Categories: {support_config.categories}")
+        logger.info(f"   Description: {support_config.description}")
 
 
 def create_fastmcp_with_oauth(
@@ -210,5 +414,18 @@ def create_fastmcp_with_oauth(
         print(f"   Server URL: {server_url}")
         print(f"   Platform: {platform_url_with_subdomain}")
         print(f"   Required scopes: {required_scopes}")
+
+    # Auto-register support tool if enabled
+    try:
+        # Fetch server configuration
+        server_config = asyncio.run(fetch_server_config(server_slug, platform_url_with_subdomain, debug))
+
+        # Auto-register support tool
+        auto_register_support_tool(app, server_config, server_slug, platform_url_with_subdomain, token_verifier, debug)
+
+    except Exception as e:
+        if debug:
+            logger.error(f"❌ [mcp-obs] Failed to auto-register support tool: {e}")
+        # Continue without support tool - don't fail server startup
 
     return app
