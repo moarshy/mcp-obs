@@ -15,6 +15,13 @@
       "when": 1758945868436,
       "tag": "0001_concerned_earthquake",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1759130119489,
+      "tag": "0002_wet_retro_girl",
+      "breakpoints": true
     }
   ]
 }

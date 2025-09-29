@@ -33,6 +33,52 @@ export const mcpServer = pgTable('mcp_server', {
   // OAuth scopes
   scopesSupported: text('scopes_supported').default('read,write').notNull(),
 
+  // Support tool configuration
+  supportToolEnabled: boolean('support_tool_enabled').default(false).notNull(),
+  supportToolTitle: text('support_tool_title').default('Get Support'),
+  supportToolDescription: text('support_tool_description').default('Report issues or ask questions'),
+  supportToolCategories: text('support_tool_categories').default('["Bug Report", "Feature Request", "Documentation", "Other"]'), // JSON array
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
+
+// Support Ticket - Links to existing MCP auth system for user tracking
+export const supportTicket = pgTable('support_ticket', {
+  id: uuid('id').defaultRandom().primaryKey(),
+
+  // Organization and MCP server scoping
+  organizationId: text('organization_id').notNull(), // References platform auth
+  mcpServerId: uuid('mcp_server_id').notNull().references(() => mcpServer.id, { onDelete: 'cascade' }),
+
+  // Ticket content
+  title: text('title').notNull(),
+  description: text('description').notNull(),
+  category: text('category').default('Other'), // Bug Report, Feature Request, Documentation, Other
+
+  // User identification (flexible for OAuth vs non-OAuth)
+  mcpUserId: text('mcp_user_id'), // For OAuth users - references mcpServerUser.id from mcp-auth-schema
+  userEmail: text('user_email'), // For non-OAuth users or as backup
+  sessionId: text('session_id'), // MCP session for context
+
+  // Session context capture (minimal for MVP - current tool call only)
+  contextData: text('context_data'), // JSON string of current tool call context
+  userAgent: text('user_agent'), // MCP client information
+
+  // Ticket management
+  status: text('status').notNull().default('open'), // open, in_progress, closed
+  priority: text('priority').default('normal'), // low, normal, high
+
+  // Audit trail
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  closedAt: timestamp('closed_at'),
+  closedBy: text('closed_by'), // Platform user who closed it
+})
+
+// Type exports
+export type McpServer = typeof mcpServer.$inferSelect
+export type NewMcpServer = typeof mcpServer.$inferInsert
+
+export type SupportTicket = typeof supportTicket.$inferSelect
+export type NewSupportTicket = typeof supportTicket.$inferInsert
