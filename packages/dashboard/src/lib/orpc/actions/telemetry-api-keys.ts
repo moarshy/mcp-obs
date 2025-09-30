@@ -208,11 +208,6 @@ export const listApiKeysAction = base
         .where(eq(mcpServerApiKey.mcpServerId, input.mcpServerId))
         .orderBy(desc(mcpServerApiKey.createdAt))
 
-      console.log('Database query for API keys:')
-      console.log('- Server ID:', input.mcpServerId)
-      console.log('- Raw keys from DB:', keys)
-      console.log('- Number of keys found:', keys.length)
-
       const processedKeys = keys
         .filter(key => key && key.id) // Filter out any null/undefined keys
         .map(key => ({
@@ -221,8 +216,6 @@ export const listApiKeysAction = base
           // Security: Never expose the actual API key hash
           apiKeyPreview: key.revokedAt ? null : 'mcpobs_live_•••••••••••••••',
         }))
-
-      console.log('Processed keys being returned:', processedKeys)
       return processedKeys
     } catch (error) {
       console.error('Error listing API keys:', error)

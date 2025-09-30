@@ -58,7 +58,6 @@ export function ApiKeyManagement({ serverId, serverSlug }: ApiKeyManagementProps
       setApiKeys(activeKeys)
       setError('')
     } catch (err: any) {
-      console.error('Error loading API keys:', err)
       setError(err.message || 'Failed to load API keys')
     } finally {
       setLoading(false)
@@ -109,7 +108,6 @@ export function ApiKeyManagement({ serverId, serverSlug }: ApiKeyManagementProps
   }
 
   useEffect(() => {
-    console.log('ApiKeyManagement useEffect triggered:', { serverId })
     loadApiKeys()
   }, [serverId])
 
