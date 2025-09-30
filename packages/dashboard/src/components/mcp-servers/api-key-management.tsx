@@ -86,7 +86,20 @@ export function ApiKeyManagement({ serverId, serverSlug }: ApiKeyManagementProps
         name: newKeyName.trim()
       })
 
-      setNewApiKey(result.apiKey)
+      console.log('Generate API Key Result:', result)
+      console.log('API Key from result:', result.apiKey)
+      console.log('Result type:', typeof result)
+      console.log('Result structure:', JSON.stringify(result, null, 2))
+
+      // Handle the case where oRPC might return [null, actualData] format
+      let actualResult = result
+      if (Array.isArray(result) && result.length >= 2 && result[0] === null && result[1]) {
+        console.log('Detected nested array format for API key result, extracting actual data')
+        actualResult = result[1]
+      }
+
+      console.log('Final API key to set:', actualResult.apiKey)
+      setNewApiKey(actualResult.apiKey)
       setShowNewKey(true)
       setNewKeyName('')
       await loadApiKeys()

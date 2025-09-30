@@ -3,6 +3,7 @@
 FastMCP Demo Server with mcp-obs SDK OAuth and OpenTelemetry
 Following official MCP SDK patterns with token introspection and telemetry
 """
+import os
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -18,7 +19,7 @@ SERVER_NAME = "FastMCP Demo Server with OAuth and Telemetry"
 PORT = 3006  # Different port to avoid conflicts
 
 # Telemetry configuration - replace with your actual API key
-TELEMETRY_API_KEY = "mcpobs_dev_demo_key_12345"  # This would come from your dashboard
+TELEMETRY_API_KEY = os.getenv("MCP_OBS_TELEMETRY_KEY")
 TELEMETRY_ENABLED = True  # Set to False to disable telemetry
 
 # Create FastMCP server with OAuth - following official MCP SDK pattern!

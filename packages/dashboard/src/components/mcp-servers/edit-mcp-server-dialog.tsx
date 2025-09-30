@@ -37,6 +37,7 @@ interface EditMcpServerDialogProps {
     accessTokenExpiration: number
     refreshTokenExpiration: number
     scopesSupported: string
+    telemetryEnabled: boolean
   }
   children: React.ReactNode
 }
@@ -61,6 +62,7 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
     description: mcpServer.description || '',
     // Derive platform auth enabled from existing auth settings
     platformAuthEnabled: mcpServer.enabled && (mcpServer.enablePasswordAuth || mcpServer.enableGoogleAuth || mcpServer.enableGithubAuth),
+    telemetryEnabled: mcpServer.telemetryEnabled,
   })
 
   const router = useRouter()
@@ -118,6 +120,7 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
         slug: formData.slug !== mcpServer.slug ? formData.slug : undefined,
         description: formData.description !== (mcpServer.description || '') ? formData.description : undefined,
         platformAuthEnabled: formData.platformAuthEnabled,
+        telemetryEnabled: formData.telemetryEnabled,
       })
 
       setOpen(false)
@@ -138,7 +141,8 @@ export function EditMcpServerDialog({ mcpServer, children }: EditMcpServerDialog
   const hasChanges = formData.name !== mcpServer.name ||
                     formData.slug !== mcpServer.slug ||
                     formData.description !== (mcpServer.description || '') ||
-                    formData.platformAuthEnabled !== (mcpServer.enabled && (mcpServer.enablePasswordAuth || mcpServer.enableGoogleAuth || mcpServer.enableGithubAuth))
+                    formData.platformAuthEnabled !== (mcpServer.enabled && (mcpServer.enablePasswordAuth || mcpServer.enableGoogleAuth || mcpServer.enableGithubAuth)) ||
+                    formData.telemetryEnabled !== mcpServer.telemetryEnabled
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
