@@ -28,6 +28,7 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [createdServer, setCreatedServer] = useState<any>(null)
   const [slugValidation, setSlugValidation] = useState<{
     isChecking: boolean
     isAvailable: boolean | null
@@ -160,7 +161,14 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
         telemetryEnabled: formData.telemetryEnabled,
       })
 
-      setOpen(false)
+      // Store the created server info (including API key if generated)
+      setCreatedServer(newServer)
+
+      // Don't close the dialog immediately if we have an API key to show
+      if (!newServer.telemetryApiKey) {
+        setOpen(false)
+      }
+
       setFormData({
         name: '',
         slug: '',
@@ -197,13 +205,133 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Server className="h-5 w-5 mr-2" />
-            Create MCP Server
+            {createdServer ? 'MCP Server Created!' : 'Create MCP Server'}
           </DialogTitle>
           <DialogDescription>
-            Set up a new MCP server with authentication and analytics. Your server will be accessible
-            at a dedicated subdomain.
+            {createdServer
+              ? 'Your MCP server has been created successfully!'
+              : 'Set up a new MCP server with authentication and analytics. Your server will be accessible at a dedicated subdomain.'
+            }
           </DialogDescription>
         </DialogHeader>
+
+        {createdServer && createdServer.telemetryApiKey ? (
+          // Success screen with API key
+          <div className="space-y-6">
+            <div className="flex items-center justify-center p-6">
+              <CheckCircle className="h-16 w-16 text-green-500" />
+            </div>
+
+            <div className="space-y-4">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold">Server Created Successfully!</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Your MCP server "{createdServer.name}" is ready to use.
+                </p>
+              </div>
+
+              <div className="border rounded-lg p-4 bg-green-50 dark:bg-green-900/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                    Telemetry API Key Generated
+                  </span>
+                </div>
+                <p className="text-xs text-green-700 dark:text-green-300 mb-3">
+                  Save this API key now - it won't be shown again for security reasons.
+                </p>
+
+                <div className="bg-white dark:bg-gray-800 border rounded p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <code className="text-sm font-mono flex-1 break-all">
+                      {createdServer.telemetryApiKey}
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(createdServer.telemetryApiKey)
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="mt-4 p-3 bg-green-100 dark:bg-green-900/40 rounded border">
+                  <p className="text-xs font-medium text-green-800 dark:text-green-200 mb-2">
+                    Quick Setup:
+                  </p>
+                  <div className="font-mono text-xs text-green-700 dark:text-green-300">
+                    <div>export MCP_OBS_API_KEY="{createdServer.telemetryApiKey}"</div>
+                    <div className="mt-1">configureMCPTelemetry(&#123;</div>
+                    <div>&nbsp;&nbsp;serverSlug: '{createdServer.slug}',</div>
+                    <div>&nbsp;&nbsp;apiKey: process.env.MCP_OBS_API_KEY</div>
+                    <div>&#125;)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setOpen(false)
+                  setCreatedServer(null)
+                }}
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  setOpen(false)
+                  setCreatedServer(null)
+                  router.push(`/dashboard/mcp-servers/${createdServer.id}`)
+                }}
+              >
+                View Server
+              </Button>
+            </div>
+          </div>
+        ) : createdServer ? (
+          // Success screen without API key
+          <div className="space-y-6">
+            <div className="flex items-center justify-center p-6">
+              <CheckCircle className="h-16 w-16 text-green-500" />
+            </div>
+
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-semibold">Server Created Successfully!</h3>
+              <p className="text-sm text-muted-foreground">
+                Your MCP server "{createdServer.name}" is ready to use.
+              </p>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setOpen(false)
+                  setCreatedServer(null)
+                }}
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  setOpen(false)
+                  setCreatedServer(null)
+                  router.push(`/dashboard/mcp-servers/${createdServer.id}`)
+                }}
+              >
+                View Server
+              </Button>
+            </div>
+          </div>
+        ) : (
+          // Original form
+          <>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
@@ -460,6 +588,8 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
             </Button>
           </DialogFooter>
         </form>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   )

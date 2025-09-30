@@ -197,7 +197,7 @@ export const getSupportTicketsAction = base
       const organizationId = userMemberships[0].organizationId
 
       // 3. Build query conditions
-      let whereConditions = [eq(supportTicket.organizationId, organizationId)]
+      const whereConditions = [eq(supportTicket.organizationId, organizationId)]
 
       if (input.status) {
         whereConditions.push(eq(supportTicket.status, input.status))

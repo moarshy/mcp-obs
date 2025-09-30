@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Image from 'next/image'
 import { authClient } from '@/lib/auth/client'
 import {
@@ -39,20 +39,17 @@ const sidebarItems = [
   {
     name: 'Dashboard',
     href: '/dashboard',
-    icon: LayoutDashboard,
-    current: true
+    icon: LayoutDashboard
   },
   {
     name: 'MCP Servers',
     href: '/dashboard/mcp-servers',
-    icon: Server,
-    current: false
+    icon: Server
   },
   {
     name: 'Support Tickets',
     href: '/dashboard/support-tickets',
-    icon: MessageSquare,
-    current: false
+    icon: MessageSquare
   }
 ]
 
@@ -76,6 +73,7 @@ const bottomItems = [
 
 export function DashboardSidebar({ user, organizations }: DashboardSidebarProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(
     organizations.length > 0 ? organizations[0] : null
   )
@@ -179,13 +177,14 @@ export function DashboardSidebar({ user, organizations }: DashboardSidebarProps)
         <ul className="space-y-2">
           {sidebarItems.map((item) => {
             const Icon = item.icon
+            const isActive = pathname === item.href
             return (
               <li key={item.name}>
                 <a
                   href={item.href}
                   className={`
-                    flex items-center px-3 py-2 text-sm font-medium rounded-lg
-                    ${item.current
+                    flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors
+                    ${isActive
                       ? 'bg-gray-800 text-white'
                       : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                     }

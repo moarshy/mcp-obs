@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { db, mcpServer } from 'database'
 import { eq } from 'drizzle-orm'
 
