@@ -1,14 +1,16 @@
 """
-mcp-obs Server SDK - OAuth middleware for MCP servers
+mcp-obs Server SDK - OAuth middleware and telemetry for MCP servers
 
-This SDK provides OAuth authentication middleware for MCP servers,
-enabling integration with the mcp-obs platform for user authentication
-and session management.
+This SDK provides OAuth authentication middleware and OpenTelemetry integration
+for MCP servers, enabling integration with the mcp-obs platform for user
+authentication, session management, and observability.
 
 Main components:
 - OAuth middleware decorators
+- OpenTelemetry auto-instrumentation
 - Transport-specific adapters (stdio, HTTP, streamable HTTP)
 - Token validation utilities
+- Support tool integration
 - Configuration helpers
 """
 
@@ -50,6 +52,20 @@ from .support_tool import (
     create_support_tool_handler,
     register_support_tool,
     configure_oauth_mcp_server
+)
+
+# Telemetry functionality
+from .telemetry import (
+    configure_mcp_telemetry,
+    instrument_mcp_server,
+    shutdown_telemetry,
+    get_telemetry_stats,
+    MCPTelemetryConfig,
+    MCPAttributes,
+    MCPOperationType,
+    MCPSpanNames,
+    configure_unified_mcp_telemetry,
+    setup_simple_telemetry
 )
 
 __version__ = "0.1.0"
@@ -96,6 +112,18 @@ __all__ = [
     "create_support_tool_handler",
     "register_support_tool",
     "configure_oauth_mcp_server",
+
+    # Telemetry functionality
+    "configure_mcp_telemetry",
+    "instrument_mcp_server",
+    "shutdown_telemetry",
+    "get_telemetry_stats",
+    "MCPTelemetryConfig",
+    "MCPAttributes",
+    "MCPOperationType",
+    "MCPSpanNames",
+    "configure_unified_mcp_telemetry",
+    "setup_simple_telemetry",
 
     # Version
     "__version__"
