@@ -49,6 +49,7 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
     supportToolTitle: 'Get Support',
     supportToolDescription: 'Report issues or ask questions',
     supportToolCategories: 'Bug Report,Feature Request,Documentation,Other',
+    telemetryEnabled: false, // OpenTelemetry option
   })
 
   const router = useRouter()
@@ -156,6 +157,7 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
         supportToolTitle: formData.supportToolTitle,
         supportToolDescription: formData.supportToolDescription,
         supportToolCategories: formData.supportToolCategories,
+        telemetryEnabled: formData.telemetryEnabled,
       })
 
       setOpen(false)
@@ -168,6 +170,7 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
         supportToolTitle: 'Get Support',
         supportToolDescription: 'Report issues or ask questions',
         supportToolCategories: 'Bug Report,Feature Request,Documentation,Other',
+        telemetryEnabled: false,
       })
       setSlugValidation({ isChecking: false, isAvailable: null, message: '' })
 
@@ -380,6 +383,52 @@ export function CreateMcpServerDialog({ children }: CreateMcpServerDialogProps) 
                     <div className="ml-2 text-sm text-blue-700 dark:text-blue-300">
                       When enabled, a "get_support_tool" will be automatically registered with your MCP server,
                       allowing users to create support tickets through natural language interactions.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            <div>
+              <h4 className="text-sm font-medium mb-3">Telemetry & Analytics</h4>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="telemetryEnabled"
+                  checked={formData.telemetryEnabled}
+                  onCheckedChange={(checked) =>
+                    setFormData(prev => ({ ...prev, telemetryEnabled: checked === true }))
+                  }
+                  disabled={isLoading}
+                />
+                <div>
+                  <Label htmlFor="telemetryEnabled" className="text-sm font-medium">
+                    Enable OpenTelemetry
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Automatically collects performance metrics, usage analytics, and distributed traces.
+                    Provides detailed insights into tool usage and user behavior.
+                  </p>
+                </div>
+              </div>
+
+              {formData.telemetryEnabled && (
+                <div className="mt-4 p-4 border rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm text-green-700 dark:text-green-300 space-y-2">
+                      <p>
+                        <strong>API Key Generated:</strong> A telemetry API key will be automatically generated
+                        when your MCP server is created. Use this key to configure the mcp-obs SDK.
+                      </p>
+                      <div className="bg-green-100 dark:bg-green-900/40 p-2 rounded border font-mono text-xs">
+                        <div>// TypeScript SDK</div>
+                        <div>configureMCPTelemetry(&#123;</div>
+                        <div>&nbsp;&nbsp;serverSlug: '{formData.slug || 'your-server'}',</div>
+                        <div>&nbsp;&nbsp;apiKey: process.env.MCP_OBS_API_KEY</div>
+                        <div>&#125;)</div>
+                      </div>
                     </div>
                   </div>
                 </div>
