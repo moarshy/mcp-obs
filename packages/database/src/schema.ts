@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { boolean, integer, pgTable, text, timestamp, uuid, bigint, doublePrecision, jsonb } from 'drizzle-orm/pg-core'
 
 // MCP Server - Business Logic Schema
 export const mcpServer = pgTable('mcp_server', {
@@ -39,6 +39,9 @@ export const mcpServer = pgTable('mcp_server', {
   supportToolDescription: text('support_tool_description').default('Report issues or ask questions'),
   supportToolCategories: text('support_tool_categories').default('["Bug Report", "Feature Request", "Documentation", "Other"]'), // JSON array
 
+  // Telemetry configuration
+  telemetryEnabled: boolean('telemetry_enabled').default(false).notNull(),
+
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -76,9 +79,88 @@ export const supportTicket = pgTable('support_ticket', {
   closedBy: text('closed_by'), // Platform user who closed it
 })
 
+// MCP Server API Keys - For telemetry authentication
+export const mcpServerApiKey = pgTable('mcp_server_api_key', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  mcpServerId: uuid('mcp_server_id').notNull().references(() => mcpServer.id, { onDelete: 'cascade' }),
+  organizationId: text('organization_id').notNull(), // References platform auth organization
+
+  // API key management
+  apiKeyHash: text('api_key_hash').notNull(), // bcrypt hashed API key
+  name: text('name').default('Telemetry API Key'), // User-friendly name
+  lastUsedAt: timestamp('last_used_at'),
+
+  // Security and auditing
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  revokedAt: timestamp('revoked_at'), // null = active, non-null = revoked
+})
+
+// Telemetry Traces - Stores OpenTelemetry trace data
+export const telemetryTrace = pgTable('telemetry_trace', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  mcpServerId: uuid('mcp_server_id').notNull().references(() => mcpServer.id, { onDelete: 'cascade' }),
+
+  // OpenTelemetry standard fields
+  traceId: text('trace_id').notNull(),
+  spanId: text('span_id').notNull(),
+  parentSpanId: text('parent_span_id'),
+  operationName: text('operation_name').notNull(),
+  startTime: bigint('start_time', { mode: 'bigint' }).notNull(), // nanoseconds since epoch
+  endTime: bigint('end_time', { mode: 'bigint' }).notNull(), // nanoseconds since epoch
+  durationNs: bigint('duration_ns', { mode: 'bigint' }).notNull(), // duration in nanoseconds
+
+  // MCP semantic conventions
+  mcpOperationType: text('mcp_operation_type'), // "tool_call", "resource_read", "prompt_get"
+  mcpToolName: text('mcp_tool_name'),
+  mcpUserId: text('mcp_user_id'), // From OAuth authentication
+  mcpSessionId: text('mcp_session_id'),
+
+  // Span attributes and status
+  spanStatus: text('span_status').default('OK'), // OK, ERROR, TIMEOUT
+  errorMessage: text('error_message'),
+
+  // Raw span data for export forwarding (future)
+  spanData: jsonb('span_data').notNull(),
+
+  // Export tracking (future feature)
+  exportedToCustomer: boolean('exported_to_customer').default(false),
+  exportError: text('export_error'),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Telemetry Metrics - Aggregated metrics for dashboard analytics
+export const telemetryMetric = pgTable('telemetry_metric', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  mcpServerId: uuid('mcp_server_id').notNull().references(() => mcpServer.id, { onDelete: 'cascade' }),
+
+  // Metric identification
+  metricName: text('metric_name').notNull(), // "mcp.tool.calls.count", "mcp.tool.latency.p95"
+  metricType: text('metric_type').notNull(), // "counter", "histogram", "gauge"
+  value: doublePrecision('value').notNull(),
+
+  // Metric labels/dimensions
+  labels: jsonb('labels'), // {"tool_name": "get_docs", "status": "success", "user_id": "123"}
+
+  // Time bucketing for dashboard queries
+  timestamp: timestamp('timestamp').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 // Type exports
 export type McpServer = typeof mcpServer.$inferSelect
 export type NewMcpServer = typeof mcpServer.$inferInsert
 
 export type SupportTicket = typeof supportTicket.$inferSelect
 export type NewSupportTicket = typeof supportTicket.$inferInsert
+
+export type McpServerApiKey = typeof mcpServerApiKey.$inferSelect
+export type NewMcpServerApiKey = typeof mcpServerApiKey.$inferInsert
+
+export type TelemetryTrace = typeof telemetryTrace.$inferSelect
+export type NewTelemetryTrace = typeof telemetryTrace.$inferInsert
+
+export type TelemetryMetric = typeof telemetryMetric.$inferSelect
+export type NewTelemetryMetric = typeof telemetryMetric.$inferInsert
