@@ -45,22 +45,15 @@ export function ApiKeyManagement({ serverId, serverSlug }: ApiKeyManagementProps
     try {
       setLoading(true)
       const keys = await listApiKeysAction({ mcpServerId: serverId })
-      console.log('Raw API keys response:', keys)
-      console.log('Response type:', typeof keys)
-      console.log('Response is array:', Array.isArray(keys))
-      console.log('Response structure:', JSON.stringify(keys, null, 2))
-      console.log('Server ID being used:', serverId)
 
       // Handle the case where oRPC might return [null, actualData] format
       let actualKeys = keys
       if (Array.isArray(keys) && keys.length > 0 && keys[0] === null && Array.isArray(keys[1])) {
-        console.log('Detected nested array format, extracting actual data')
         actualKeys = keys[1]
       }
 
       // Only show active (non-revoked) keys, filter out any null/undefined keys
       const activeKeys = actualKeys.filter(key => key && key.status === 'active')
-      console.log('Filtered active keys:', activeKeys)
 
       setApiKeys(activeKeys)
       setError('')
@@ -86,19 +79,11 @@ export function ApiKeyManagement({ serverId, serverSlug }: ApiKeyManagementProps
         name: newKeyName.trim()
       })
 
-      console.log('Generate API Key Result:', result)
-      console.log('API Key from result:', result.apiKey)
-      console.log('Result type:', typeof result)
-      console.log('Result structure:', JSON.stringify(result, null, 2))
-
       // Handle the case where oRPC might return [null, actualData] format
       let actualResult = result
       if (Array.isArray(result) && result.length >= 2 && result[0] === null && result[1]) {
-        console.log('Detected nested array format for API key result, extracting actual data')
         actualResult = result[1]
       }
-
-      console.log('Final API key to set:', actualResult.apiKey)
       setNewApiKey(actualResult.apiKey)
       setShowNewKey(true)
       setNewKeyName('')

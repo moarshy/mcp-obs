@@ -27,6 +27,7 @@ const updateSupportTicketStatusSchema = z.object({
 const getSupportTicketsSchema = z.object({
   status: z.enum(['open', 'in_progress', 'closed']).optional(),
   category: z.string().optional(),
+  mcpServerId: z.string().optional(),
   page: z.number().default(1),
   limit: z.number().default(20),
 })
@@ -207,6 +208,10 @@ export const getSupportTicketsAction = base
         whereConditions.push(eq(supportTicket.category, input.category))
       }
 
+      if (input.mcpServerId) {
+        whereConditions.push(eq(supportTicket.mcpServerId, input.mcpServerId))
+      }
+
       const whereClause = whereConditions.length > 1 ? and(...whereConditions) : whereConditions[0]
 
       // 4. Get total count for pagination
@@ -236,12 +241,12 @@ export const getSupportTicketsAction = base
           updatedAt: supportTicket.updatedAt,
           closedAt: supportTicket.closedAt,
           closedBy: supportTicket.closedBy,
-          // MCP Server info
+          // MCP Server info (may be null if server is deleted)
           mcpServerName: mcpServer.name,
           mcpServerSlug: mcpServer.slug,
         })
         .from(supportTicket)
-        .innerJoin(mcpServer, eq(supportTicket.mcpServerId, mcpServer.id))
+        .leftJoin(mcpServer, eq(supportTicket.mcpServerId, mcpServer.id))
         .where(whereClause)
         .orderBy(desc(supportTicket.createdAt))
         .limit(input.limit)

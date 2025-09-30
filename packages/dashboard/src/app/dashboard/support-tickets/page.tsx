@@ -8,28 +8,41 @@ import { MessageSquare, Clock, CheckCircle, AlertCircle, User, Mail, Calendar } 
 import { getSupportTicketsAction } from '@/lib/orpc/actions/support-tickets'
 
 interface SupportTicketsPageProps {
-  searchParams: { [key: string]: string | string[] | undefined }
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 // Server Component for data fetching
 async function SupportTicketsContent({ searchParams }: SupportTicketsPageProps) {
-  const status = Array.isArray(searchParams.status)
-    ? searchParams.status[0]
-    : searchParams.status as 'open' | 'in_progress' | 'closed' | undefined
+  const params = await searchParams
 
-  const category = Array.isArray(searchParams.category)
-    ? searchParams.category[0]
-    : searchParams.category as string | undefined
+  const status = Array.isArray(params.status)
+    ? params.status[0]
+    : params.status as 'open' | 'in_progress' | 'closed' | undefined
 
-  const page = parseInt(Array.isArray(searchParams.page) ? searchParams.page[0] : searchParams.page || '1')
+  const category = Array.isArray(params.category)
+    ? params.category[0]
+    : params.category as string | undefined
+
+  const mcpServerId = Array.isArray(params.mcpServerId)
+    ? params.mcpServerId[0]
+    : params.mcpServerId as string | undefined
+
+  const page = parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
 
   try {
-    const result = await getSupportTicketsAction({
+    const rawResult = await getSupportTicketsAction({
       status,
       category,
+      mcpServerId,
       page,
       limit: 20
     })
+
+    // Handle the case where oRPC might return [null, actualData] format
+    let result = rawResult
+    if (Array.isArray(rawResult) && rawResult.length >= 2 && rawResult[0] === null && rawResult[1]) {
+      result = rawResult[1]
+    }
 
     if (!result || !result.tickets) {
       return (
@@ -54,7 +67,7 @@ async function SupportTicketsContent({ searchParams }: SupportTicketsPageProps) 
             <CardTitle className="text-lg">Filters</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
               <Select defaultValue={status || "all"}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Filter by status" />
@@ -76,13 +89,25 @@ async function SupportTicketsContent({ searchParams }: SupportTicketsPageProps) 
                   <SelectItem value="Bug Report">Bug Report</SelectItem>
                   <SelectItem value="Feature Request">Feature Request</SelectItem>
                   <SelectItem value="Documentation">Documentation</SelectItem>
+                  <SelectItem value="Testing">Testing</SelectItem>
                   <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select defaultValue={mcpServerId || "all"}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by MCP server" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Servers</SelectItem>
+                  {/* TODO: Populate with actual MCP servers */}
+                  <SelectItem value="5c18f05a-bff7-472f-a7a4-8687811116c2">test server</SelectItem>
                 </SelectContent>
               </Select>
 
               <Input
                 placeholder="Search tickets..."
-                className="flex-1"
+                className="flex-1 min-w-[200px]"
               />
             </div>
           </CardContent>
@@ -107,7 +132,7 @@ async function SupportTicketsContent({ searchParams }: SupportTicketsPageProps) 
                       </div>
                       <div className="flex items-center gap-1">
                         <MessageSquare className="h-3 w-3" />
-                        {ticket.mcpServerName}
+                        {ticket.mcpServerName || 'Unknown Server'}
                       </div>
                       {ticket.mcpUserId ? (
                         <div className="flex items-center gap-1">
@@ -203,7 +228,7 @@ async function SupportTicketsContent({ searchParams }: SupportTicketsPageProps) 
   }
 }
 
-export default function SupportTicketsPage({ searchParams }: SupportTicketsPageProps) {
+export default async function SupportTicketsPage({ searchParams }: SupportTicketsPageProps) {
   return (
     <div className="space-y-6">
       <div>
