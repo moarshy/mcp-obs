@@ -47,6 +47,7 @@ class McpObsTokenVerifier(TokenVerifier):
 
         # Store current token for tool access
         self._current_token = None
+        self._last_token_data = None
 
     async def verify_token(self, token: str) -> Optional[AccessToken]:
         """Verify token via mcp-obs platform introspection"""
@@ -97,6 +98,9 @@ class McpObsTokenVerifier(TokenVerifier):
                         scopes = scope_string.split()
                 else:
                     scopes = []
+
+                # Store token data for telemetry access
+                self._last_token_data = data
 
                 if self.debug:
                     logger.info(f"✅ [mcp-obs] Token verified for user: {data.get('username', 'unknown')}")

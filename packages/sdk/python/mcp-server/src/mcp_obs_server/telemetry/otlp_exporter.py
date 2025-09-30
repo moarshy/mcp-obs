@@ -8,7 +8,9 @@ from typing import Dict, Optional, Any, Callable, Awaitable, List
 from enum import Enum
 
 from pydantic import BaseModel, Field
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+import requests
+import json
+from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.resource import ResourceAttributes
 from loguru import logger
@@ -98,39 +100,136 @@ class CircuitBreaker:
         }
 
 
-def create_mcp_otlp_exporter(config: OTLPExporterConfig) -> OTLPSpanExporter:
+class MCPJsonOTLPExporter(SpanExporter):
+    """Custom OTLP exporter that sends JSON format to mcp-obs"""
+
+    def __init__(self, config: OTLPExporterConfig):
+        self.config = config
+        self.endpoint = config.endpoint or "https://api.mcp-obs.com/otel/traces"
+        self.headers = {
+            "Authorization": f"Bearer {config.api_key}",
+            "Content-Type": "application/json",
+            **(config.headers or {}),
+        }
+        self.timeout = config.timeout / 1000.0  # Convert to seconds
+
+        # Create resource
+        self.resource = Resource.create({
+            ResourceAttributes.SERVICE_NAME: (
+                config.service_name or f"{config.server_slug}-mcp-server"
+            ),
+            ResourceAttributes.SERVICE_VERSION: config.service_version or "1.0.0",
+            "mcp.server.slug": config.server_slug,
+        })
+
+    def export(self, spans) -> SpanExportResult:
+        """Export spans in JSON format"""
+        logger.info(f"[mcp-obs] 🚀 Starting export of {len(spans)} spans to {self.endpoint}")
+
+        try:
+            # Convert spans to OTLP JSON format
+            otlp_data = self._spans_to_otlp_json(spans)
+            logger.info(f"[mcp-obs] 📊 Converted spans to OTLP JSON: {len(otlp_data.get('resourceSpans', []))} resource spans")
+
+            # Send to endpoint
+            logger.info(f"[mcp-obs] 🔄 Sending POST to {self.endpoint} with headers: {list(self.headers.keys())}")
+            response = requests.post(
+                self.endpoint,
+                json=otlp_data,
+                headers=self.headers,
+                timeout=self.timeout
+            )
+
+            logger.info(f"[mcp-obs] 📈 Response: {response.status_code} - {response.text[:200]}")
+
+            if response.status_code == 200:
+                logger.info("[mcp-obs] ✅ Telemetry export successful!")
+                return SpanExportResult.SUCCESS
+            else:
+                logger.warning(f"[mcp-obs] ❌ Export failed: {response.status_code} - {response.text}")
+                return SpanExportResult.FAILURE
+
+        except Exception as error:
+            logger.warning(f"[mcp-obs] ❌ Export error: {error}")
+            import traceback
+            logger.warning(f"[mcp-obs] Traceback: {traceback.format_exc()}")
+            return SpanExportResult.FAILURE
+
+    def _spans_to_otlp_json(self, spans) -> Dict[str, Any]:
+        """Convert OpenTelemetry spans to OTLP JSON format"""
+        resource_spans = []
+
+        if not spans:
+            return {"resourceSpans": resource_spans}
+
+        # Group spans by resource (in practice, should be the same resource)
+        resource_attrs = []
+        for key, value in self.resource.attributes.items():
+            resource_attrs.append({
+                "key": key,
+                "value": {"stringValue": str(value)}
+            })
+
+        scope_spans = []
+        json_spans = []
+
+        for span in spans:
+            # Convert span to JSON
+            span_attrs = []
+            if hasattr(span, 'attributes') and span.attributes:
+                for key, value in span.attributes.items():
+                    if isinstance(value, str):
+                        span_attrs.append({"key": key, "value": {"stringValue": value}})
+                    elif isinstance(value, int):
+                        span_attrs.append({"key": key, "value": {"intValue": str(value)}})
+                    elif isinstance(value, float):
+                        span_attrs.append({"key": key, "value": {"doubleValue": value}})
+                    elif isinstance(value, bool):
+                        span_attrs.append({"key": key, "value": {"boolValue": value}})
+                    else:
+                        span_attrs.append({"key": key, "value": {"stringValue": str(value)}})
+
+            json_span = {
+                "traceId": format(span.context.trace_id, '032x'),
+                "spanId": format(span.context.span_id, '016x'),
+                "name": span.name,
+                "startTimeUnixNano": str(span.start_time),
+                "endTimeUnixNano": str(span.end_time or span.start_time),
+                "attributes": span_attrs,
+            }
+
+            # Add parent span ID if available
+            if span.parent and hasattr(span.parent, 'span_id'):
+                json_span["parentSpanId"] = format(span.parent.span_id, '016x')
+
+            # Add status if available
+            if hasattr(span, 'status'):
+                json_span["status"] = {
+                    "code": span.status.status_code.value if span.status.status_code else 0,
+                    "message": span.status.description or ""
+                }
+
+            json_spans.append(json_span)
+
+        scope_spans.append({
+            "spans": json_spans
+        })
+
+        resource_spans.append({
+            "resource": {"attributes": resource_attrs},
+            "scopeSpans": scope_spans
+        })
+
+        return {"resourceSpans": resource_spans}
+
+    def shutdown(self) -> None:
+        """Shutdown the exporter"""
+        pass
+
+
+def create_mcp_otlp_exporter(config: OTLPExporterConfig) -> MCPJsonOTLPExporter:
     """Create OTLP exporter with MCP-specific configuration"""
-
-    # Default to mcp-obs platform endpoint
-    endpoint = config.endpoint or "https://api.mcp-obs.com/otel/traces"
-
-    # Create resource with service identification
-    resource = Resource.create({
-        ResourceAttributes.SERVICE_NAME: (
-            config.service_name or f"{config.server_slug}-mcp-server"
-        ),
-        ResourceAttributes.SERVICE_VERSION: config.service_version or "1.0.0",
-        "mcp.server.slug": config.server_slug,
-    })
-
-    # Configure headers with authentication
-    headers = {
-        "Authorization": f"Bearer {config.api_key}",
-        "Content-Type": "application/x-protobuf",
-        **(config.headers or {}),
-    }
-
-    # Create exporter
-    exporter = OTLPSpanExporter(
-        endpoint=endpoint,
-        headers=headers,
-        timeout=config.timeout / 1000.0,  # Convert to seconds
-    )
-
-    # Attach resource to exporter
-    exporter._resource = resource
-
-    return exporter
+    return MCPJsonOTLPExporter(config)
 
 
 def create_circuit_breaker() -> CircuitBreaker:
@@ -170,7 +269,7 @@ class ResilientOTLPExporter:
 
         def _sync_export():
             result = self.exporter.export(spans)
-            if result.name != "SUCCESS":
+            if result != SpanExportResult.SUCCESS:
                 raise Exception(f"Export failed: {result}")
 
         await loop.run_in_executor(None, _sync_export)
