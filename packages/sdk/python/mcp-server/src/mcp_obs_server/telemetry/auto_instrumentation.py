@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from pydantic import BaseModel, Field
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.sampling import TraceIdRatioBasedSampler, AlwaysOnSampler, AlwaysOffSampler
+from opentelemetry.sdk.trace.sampling import TraceIdRatioBased, ALWAYS_ON, ALWAYS_OFF
 from opentelemetry.trace import Status, StatusCode, SpanKind
 from mcp.server import Server
 from loguru import logger
@@ -101,11 +101,11 @@ def configure_mcp_telemetry(config: MCPTelemetryConfig) -> None:
 def _create_sampler(rate: float):
     """Create sampling configuration"""
     if rate >= 1.0:
-        return AlwaysOnSampler()
+        return ALWAYS_ON
     elif rate <= 0:
-        return AlwaysOffSampler()
+        return ALWAYS_OFF
     else:
-        return TraceIdRatioBasedSampler(rate)
+        return TraceIdRatioBased(rate)
 
 
 def instrument_mcp_server(server: Server, auth_context: Optional[AuthContext] = None) -> None:
