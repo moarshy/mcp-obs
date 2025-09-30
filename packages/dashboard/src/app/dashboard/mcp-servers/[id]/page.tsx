@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { EditMcpServerDialog } from '@/components/mcp-servers/edit-mcp-server-dialog'
+import { ApiKeyManagement } from '@/components/mcp-servers/api-key-management'
 
 interface McpServerDetailsPageProps {
   params: {
@@ -76,6 +77,13 @@ async function McpServerDetailsContent({ serverId }: { serverId: string }) {
     }
 
     const mcpServerData = serverData
+
+    // Debug telemetry status
+    console.log('MCP Server telemetry status:', {
+      serverId: mcpServerData.id,
+      telemetryEnabled: mcpServerData.telemetryEnabled,
+      serverData: mcpServerData
+    })
 
     const serverUrl = mcpServerData.slug
 
@@ -336,12 +344,47 @@ async function McpServerDetailsContent({ serverId }: { serverId: string }) {
           </Card>
         </div>
 
-        {/* Placeholder for future analytics */}
-        <div className="text-center py-12 text-muted-foreground">
-          <BarChart3 className="h-12 w-12 mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">Analytics Coming Soon</h3>
-          <p>Detailed usage metrics and analytics will be available here.</p>
-        </div>
+        {/* Telemetry Link */}
+        {mcpServerData.telemetryEnabled && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <BarChart3 className="h-5 w-5 mr-2" />
+                Telemetry & Analytics
+              </CardTitle>
+              <CardDescription>
+                View detailed telemetry analytics for this server
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                <div>
+                  <h4 className="font-medium">OpenTelemetry Enabled</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Performance metrics, usage analytics, and distributed traces are being collected
+                  </p>
+                </div>
+                <Button asChild>
+                  <Link href={`/dashboard/telemetry/${mcpServerData.id}`}>
+                    View Analytics
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* API Key Management - Only show if telemetry is enabled */}
+        {mcpServerData.telemetryEnabled && (
+          <Card>
+            <CardContent className="p-6">
+              <ApiKeyManagement
+                serverId={mcpServerData.id}
+                serverSlug={mcpServerData.slug}
+              />
+            </CardContent>
+          </Card>
+        )}
       </div>
     )
   } catch (error) {

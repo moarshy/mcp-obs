@@ -19,7 +19,7 @@ import {
   Timer,
   Database
 } from 'lucide-react'
-import { useState } from 'react'
+import React, { useState } from 'react'
 
 interface TelemetryAnalyticsProps {
   serverId: string
@@ -56,34 +56,32 @@ interface TelemetryStats {
 export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: TelemetryAnalyticsProps) {
   const [timeRange, setTimeRange] = useState<'1h' | '6h' | '24h' | '7d' | '30d'>('24h')
   const [loading, setLoading] = useState(false)
+  const [telemetryData, setTelemetryData] = useState<TelemetryStats | null>(null)
 
-  // Mock telemetry data - in real implementation, fetch from getTelemetryAnalyticsAction
-  const mockTelemetryData: TelemetryStats = {
-    summary: {
-      totalCalls: 1247,
-      avgLatency: 156,
-      errorRate: 2.3,
-      activeUsers: 23,
-    },
-    topTools: [
-      { name: 'get_api_docs', calls: 456, avgLatency: 142, errorRate: 1.2 },
-      { name: 'search_endpoints', calls: 321, avgLatency: 203, errorRate: 0.8 },
-      { name: 'get_examples', calls: 289, avgLatency: 98, errorRate: 4.1 },
-      { name: 'validate_schema', calls: 181, avgLatency: 267, errorRate: 3.7 },
-    ],
-    latencyPercentiles: {
-      p50: 142,
-      p95: 456,
-      p99: 723,
-    },
-    timeSeries: [
-      // Mock time series data
-      { timestamp: '00:00', calls: 45, latency: 156, errors: 1 },
-      { timestamp: '01:00', calls: 32, latency: 143, errors: 0 },
-      { timestamp: '02:00', calls: 28, latency: 167, errors: 1 },
-      // ... more data points
-    ]
+  // Load telemetry data
+  const loadTelemetryData = async () => {
+    setLoading(true)
+    try {
+      // TODO: Implement getTelemetryAnalyticsAction to fetch real data
+      // const data = await getTelemetryAnalyticsAction({ serverId, timeRange })
+      // setTelemetryData(data)
+
+      // For now, set to null to show empty state
+      setTelemetryData(null)
+    } catch (error) {
+      console.error('Failed to load telemetry data:', error)
+      setTelemetryData(null)
+    } finally {
+      setLoading(false)
+    }
   }
+
+  // Load data when component mounts or time range changes
+  React.useEffect(() => {
+    if (telemetryEnabled) {
+      loadTelemetryData()
+    }
+  }, [telemetryEnabled, timeRange, serverId])
 
   const timeRangeLabels = {
     '1h': 'Last Hour',
@@ -124,6 +122,81 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
             </div>
             <Button variant="outline" size="sm">
               Configure Telemetry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Telemetry Analytics
+          </CardTitle>
+          <CardDescription>Loading telemetry data...</CardDescription>
+        </CardHeader>
+        <CardContent className="text-center py-8">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-current mr-3"></div>
+            Loading analytics data...
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  // Show empty state if no data available
+  if (!telemetryData) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Telemetry Analytics
+              </CardTitle>
+              <CardDescription>
+                Real-time observability for {serverSlug} • {timeRangeLabels[timeRange]}
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-green-600">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Active
+              </Badge>
+              <div className="flex gap-1">
+                {(['1h', '6h', '24h', '7d', '30d'] as const).map((range) => (
+                  <Button
+                    key={range}
+                    variant={timeRange === range ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTimeRange(range)}
+                  >
+                    {range}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="text-center py-8">
+          <div className="flex flex-col items-center gap-4">
+            <BarChart3 className="h-12 w-12 text-muted-foreground" />
+            <div>
+              <h3 className="text-lg font-medium">No Data Available</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                No telemetry data has been collected yet. Once your MCP server starts receiving
+                requests with telemetry enabled, analytics will appear here.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={loadTelemetryData}>
+              Refresh
             </Button>
           </div>
         </CardContent>
@@ -175,7 +248,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Tool Calls</p>
-                <p className="text-2xl font-bold">{mockTelemetryData.summary.totalCalls.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{telemetryData.summary.totalCalls.toLocaleString()}</p>
               </div>
               <Activity className="h-8 w-8 text-blue-500" />
             </div>
@@ -191,7 +264,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Latency</p>
-                <p className="text-2xl font-bold">{mockTelemetryData.summary.avgLatency}ms</p>
+                <p className="text-2xl font-bold">{telemetryData.summary.avgLatency}ms</p>
               </div>
               <Timer className="h-8 w-8 text-orange-500" />
             </div>
@@ -207,7 +280,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Error Rate</p>
-                <p className="text-2xl font-bold">{mockTelemetryData.summary.errorRate}%</p>
+                <p className="text-2xl font-bold">{telemetryData.summary.errorRate}%</p>
               </div>
               <AlertCircle className="h-8 w-8 text-red-500" />
             </div>
@@ -223,7 +296,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Active Users</p>
-                <p className="text-2xl font-bold">{mockTelemetryData.summary.activeUsers}</p>
+                <p className="text-2xl font-bold">{telemetryData.summary.activeUsers}</p>
               </div>
               <Users className="h-8 w-8 text-green-500" />
             </div>
@@ -247,7 +320,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockTelemetryData.topTools.map((tool, index) => (
+              {telemetryData.topTools.map((tool, index) => (
                 <div key={tool.name} className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
@@ -265,7 +338,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
                   <div className="w-full bg-muted h-2 rounded overflow-hidden">
                     <div
                       className="h-full bg-blue-500 transition-all"
-                      style={{ width: `${(tool.calls / mockTelemetryData.topTools[0].calls) * 100}%` }}
+                      style={{ width: `${(tool.calls / telemetryData.topTools[0].calls) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -291,7 +364,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
                   <div className="w-32 bg-muted h-2 rounded overflow-hidden">
                     <div className="h-full bg-green-500 w-[30%]" />
                   </div>
-                  <span className="text-sm font-medium">{mockTelemetryData.latencyPercentiles.p50}ms</span>
+                  <span className="text-sm font-medium">{telemetryData.latencyPercentiles.p50}ms</span>
                 </div>
               </div>
 
@@ -301,7 +374,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
                   <div className="w-32 bg-muted h-2 rounded overflow-hidden">
                     <div className="h-full bg-yellow-500 w-[70%]" />
                   </div>
-                  <span className="text-sm font-medium">{mockTelemetryData.latencyPercentiles.p95}ms</span>
+                  <span className="text-sm font-medium">{telemetryData.latencyPercentiles.p95}ms</span>
                 </div>
               </div>
 
@@ -311,7 +384,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
                   <div className="w-32 bg-muted h-2 rounded overflow-hidden">
                     <div className="h-full bg-red-500 w-[90%]" />
                   </div>
-                  <span className="text-sm font-medium">{mockTelemetryData.latencyPercentiles.p99}ms</span>
+                  <span className="text-sm font-medium">{telemetryData.latencyPercentiles.p99}ms</span>
                 </div>
               </div>
             </div>
