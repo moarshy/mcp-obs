@@ -9,7 +9,12 @@
     "keywords": ["mcp", "server", "sdk", "mcp-obs", "oauth"],
     "dependencies": {
         "zod": "^3.25.50",
-        "@modelcontextprotocol/sdk": "^1.18.1"
+        "@modelcontextprotocol/sdk": "^1.18.1",
+        "@opentelemetry/api": "^1.9.0",
+        "@opentelemetry/sdk-node": "^0.53.0",
+        "@opentelemetry/instrumentation": "^0.53.0",
+        "@opentelemetry/exporter-otlp-http": "^0.53.0",
+        "@opentelemetry/semantic-conventions": "^1.27.0"
     },
     "devDependencies": {
         "@types/bun": "^1.2.18",
@@ -22,7 +27,8 @@
         ".": "./index.ts",
         "./oauth-validator": "./src/oauth-validator.ts",
         "./oauth-middleware": "./src/oauth-middleware.ts",
-        "./transport-adapters": "./src/transport-adapters.ts"
+        "./transport-adapters": "./src/transport-adapters.ts",
+        "./telemetry": "./src/telemetry/index.ts"
     },
     "files": [
         "index.ts",

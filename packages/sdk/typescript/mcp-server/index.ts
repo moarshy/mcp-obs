@@ -13,6 +13,9 @@ export * from "./src/transport-adapters.js";
 // Support tool exports
 export * from "./src/support-tool.js";
 
+// Telemetry exports
+export * from "./src/telemetry/index.js";
+
 export interface MCPServerConfig {
   serverName: string
   version: string
@@ -24,6 +27,15 @@ export interface MCPServerConfig {
     platformUrl?: string // Override default platform URL
     requiredScopes?: string[]
     skipValidationFor?: string[]
+    debug?: boolean
+  }
+  /** Telemetry configuration for observability */
+  telemetryConfig?: {
+    serverSlug: string
+    apiKey: string
+    endpoint?: string
+    sampling?: { rate?: number }
+    skipInstrumentation?: string[]
     debug?: boolean
   }
 }
@@ -118,6 +130,74 @@ export class McpObsSDK {
 
     const validator = new OAuthTokenValidator(oauthConfig);
     return validator.validateToken(token);
+  }
+
+  /**
+   * Configure telemetry for MCP server
+   */
+  async configureTelemetry(): Promise<void> {
+    if (!this.config.telemetryConfig) {
+      throw new Error('Telemetry configuration required')
+    }
+
+    const { configureMCPTelemetry } = await import("./src/telemetry/index.js");
+
+    configureMCPTelemetry({
+      serverSlug: this.config.telemetryConfig.serverSlug,
+      apiKey: this.config.telemetryConfig.apiKey,
+      endpoint: this.config.telemetryConfig.endpoint,
+      serviceName: this.config.serverName,
+      serviceVersion: this.config.version,
+      sampling: this.config.telemetryConfig.sampling,
+      skipInstrumentation: this.config.telemetryConfig.skipInstrumentation,
+      debug: this.config.telemetryConfig.debug,
+    });
+  }
+
+  /**
+   * Instrument MCP server with telemetry
+   */
+  async instrumentServer(server: any): Promise<void> {
+    if (!this.config.telemetryConfig) {
+      throw new Error('Telemetry configuration required')
+    }
+
+    const { instrumentMCPServer } = await import("./src/telemetry/index.js");
+
+    // If OAuth is configured, try to get auth context
+    let authContext: any = undefined
+    if (this.config.oauthConfig) {
+      // Auth context will be provided dynamically during request handling
+      // This is a placeholder for future enhancement
+    }
+
+    instrumentMCPServer(server, authContext);
+  }
+
+  /**
+   * Setup unified telemetry and OAuth (future-ready)
+   */
+  async setupUnifiedFeatures(server: any): Promise<{
+    oauthMiddleware?: any
+    telemetryShutdown?: () => Promise<void>
+  }> {
+    const result: any = {}
+
+    // Setup OAuth if configured
+    if (this.config.oauthConfig) {
+      result.oauthMiddleware = await this.createOAuthMiddleware('streamable-http')
+    }
+
+    // Setup telemetry if configured
+    if (this.config.telemetryConfig) {
+      await this.configureTelemetry()
+      await this.instrumentServer(server)
+
+      const { shutdownTelemetry } = await import("./src/telemetry/index.js");
+      result.telemetryShutdown = shutdownTelemetry
+    }
+
+    return result
   }
 }
 
