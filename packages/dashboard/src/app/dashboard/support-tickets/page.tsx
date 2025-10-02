@@ -2,10 +2,10 @@ import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MessageSquare, Clock, CheckCircle, AlertCircle, User, Mail, Calendar } from 'lucide-react'
-import { getSupportTicketsAction } from '@/lib/orpc/actions/support-tickets'
+import { getSupportTicketsAction, getMcpServersAction } from '@/lib/orpc/actions/support-tickets'
+import { TicketFilters } from '@/components/support-tickets/ticket-filters'
+import { TicketPagination } from '@/components/support-tickets/ticket-pagination'
 
 interface SupportTicketsPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -27,21 +27,35 @@ async function SupportTicketsContent({ searchParams }: SupportTicketsPageProps) 
     ? params.mcpServerId[0]
     : params.mcpServerId as string | undefined
 
+  const search = Array.isArray(params.search)
+    ? params.search[0]
+    : params.search as string | undefined
+
   const page = parseInt(Array.isArray(params.page) ? params.page[0] : params.page || '1')
 
   try {
-    const rawResult = await getSupportTicketsAction({
-      status,
-      category,
-      mcpServerId,
-      page,
-      limit: 20
-    })
+    // Fetch tickets and MCP servers in parallel
+    const [rawResult, mcpServersRaw] = await Promise.all([
+      getSupportTicketsAction({
+        status,
+        category,
+        mcpServerId,
+        search,
+        page,
+        limit: 20
+      }),
+      getMcpServersAction({})
+    ])
 
     // Handle the case where oRPC might return [null, actualData] format
     let result = rawResult
     if (Array.isArray(rawResult) && rawResult.length >= 2 && rawResult[0] === null && rawResult[1]) {
       result = rawResult[1]
+    }
+
+    let mcpServers = mcpServersRaw
+    if (Array.isArray(mcpServersRaw) && mcpServersRaw.length >= 2 && mcpServersRaw[0] === null && mcpServersRaw[1]) {
+      mcpServers = mcpServersRaw[1]
     }
 
     if (!result || !result.tickets) {
@@ -62,56 +76,19 @@ async function SupportTicketsContent({ searchParams }: SupportTicketsPageProps) 
     return (
       <div className="space-y-6">
         {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-4 flex-wrap">
-              <Select defaultValue={status || "all"}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
+        <TicketFilters mcpServers={mcpServers || []} />
 
-              <Select defaultValue={category || "all"}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="Bug Report">Bug Report</SelectItem>
-                  <SelectItem value="Feature Request">Feature Request</SelectItem>
-                  <SelectItem value="Documentation">Documentation</SelectItem>
-                  <SelectItem value="Testing">Testing</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select defaultValue={mcpServerId || "all"}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Filter by MCP server" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Servers</SelectItem>
-                  {/* TODO: Populate with actual MCP servers */}
-                  <SelectItem value="5c18f05a-bff7-472f-a7a4-8687811116c2">test server</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Input
-                placeholder="Search tickets..."
-                className="flex-1 min-w-[200px]"
-              />
+        {/* Search Results Summary */}
+        {(search || status || category || mcpServerId) && (
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div>
+              Showing {pagination.total} ticket{pagination.total !== 1 ? 's' : ''}
+              {search && ` matching "${search}"`}
+              {(status && status !== 'all') && ` with status "${status}"`}
+              {(category && category !== 'all') && ` in category "${category}"`}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        )}
 
         {/* Tickets List */}
         <div className="space-y-4">
@@ -185,31 +162,7 @@ async function SupportTicketsContent({ searchParams }: SupportTicketsPageProps) 
         </div>
 
         {/* Pagination */}
-        {pagination.pages > 1 && (
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-                  {pagination.total} tickets
-                </p>
-                <div className="flex gap-2">
-                  {pagination.page > 1 && (
-                    <Button variant="outline" size="sm">
-                      Previous
-                    </Button>
-                  )}
-                  {pagination.page < pagination.pages && (
-                    <Button variant="outline" size="sm">
-                      Next
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <TicketPagination pagination={pagination} />
       </div>
     )
   } catch (error) {

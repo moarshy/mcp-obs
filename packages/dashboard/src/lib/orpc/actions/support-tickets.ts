@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { requireSession } from '../../auth/session'
 import { base } from '../router'
 import { db, supportTicket, mcpServer, member } from 'database'
-import { eq, and, desc, count } from 'drizzle-orm'
+import { eq, and, desc, count, or, ilike } from 'drizzle-orm'
 
 const createSupportTicketSchema = z.object({
   mcpServerId: z.string(),
@@ -28,6 +28,7 @@ const getSupportTicketsSchema = z.object({
   status: z.enum(['open', 'in_progress', 'closed']).optional(),
   category: z.string().optional(),
   mcpServerId: z.string().optional(),
+  search: z.string().optional(),
   page: z.number().default(1),
   limit: z.number().default(20),
 })
@@ -212,6 +213,17 @@ export const getSupportTicketsAction = base
         whereConditions.push(eq(supportTicket.mcpServerId, input.mcpServerId))
       }
 
+      if (input.search) {
+        const searchTerm = `%${input.search}%`
+        whereConditions.push(
+          or(
+            ilike(supportTicket.title, searchTerm),
+            ilike(supportTicket.description, searchTerm),
+            ilike(supportTicket.userEmail, searchTerm)
+          )
+        )
+      }
+
       const whereClause = whereConditions.length > 1 ? and(...whereConditions) : whereConditions[0]
 
       // 4. Get total count for pagination
@@ -330,6 +342,49 @@ export const getSupportTicketByIdAction = base
     } catch (error) {
       console.error('Error fetching support ticket:', error)
       throw errors.INTERNAL_SERVER_ERROR({ message: 'Failed to fetch support ticket' })
+    }
+  })
+  .actionable({})
+
+export const getMcpServersAction = base
+  .input(z.object({}))
+  .handler(async ({ errors }) => {
+    // 1. Authentication
+    const session = await requireSession()
+
+    if (!session?.user) {
+      throw errors.UNAUTHORIZED({ message: 'Authentication required' })
+    }
+
+    try {
+      // 2. Get user's organization through membership
+      const userMemberships = await db
+        .select({ organizationId: member.organizationId })
+        .from(member)
+        .where(eq(member.userId, session.user.id))
+
+      if (userMemberships.length === 0) {
+        throw errors.UNAUTHORIZED({ message: 'No organization membership found' })
+      }
+
+      const organizationId = userMemberships[0].organizationId
+
+      // 3. Get MCP servers for this organization
+      const servers = await db
+        .select({
+          id: mcpServer.id,
+          name: mcpServer.name,
+          slug: mcpServer.slug,
+          enabled: mcpServer.enabled,
+        })
+        .from(mcpServer)
+        .where(eq(mcpServer.organizationId, organizationId))
+        .orderBy(mcpServer.name)
+
+      return servers
+    } catch (error) {
+      console.error('Error fetching MCP servers:', error)
+      throw errors.INTERNAL_SERVER_ERROR({ message: 'Failed to fetch MCP servers' })
     }
   })
   .actionable({})

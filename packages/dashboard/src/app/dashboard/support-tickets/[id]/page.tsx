@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ArrowLeft, Calendar, Clock, CheckCircle, AlertCircle, User, Mail, Server, Code } from 'lucide-react'
-import { getSupportTicketByIdAction, updateSupportTicketStatusAction } from '@/lib/orpc/actions/support-tickets'
+import { getSupportTicketByIdAction } from '@/lib/orpc/actions/support-tickets'
+import { ContextDataViewer } from '@/components/support-tickets/context-data-viewer'
+import { StatusUpdateForm } from '@/components/support-tickets/status-update-form'
 import Link from 'next/link'
 
 interface SupportTicketDetailsPageProps {
@@ -15,7 +17,13 @@ interface SupportTicketDetailsPageProps {
 // Server Component for data fetching
 async function SupportTicketDetailsContent({ ticketId }: { ticketId: string }) {
   try {
-    const ticket = await getSupportTicketByIdAction({ id: ticketId })
+    const rawTicket = await getSupportTicketByIdAction({ id: ticketId })
+
+    // Handle the case where oRPC might return [null, actualData] format
+    let ticket = rawTicket
+    if (Array.isArray(rawTicket) && rawTicket.length >= 2 && rawTicket[0] === null && rawTicket[1]) {
+      ticket = rawTicket[1]
+    }
 
     if (!ticket) {
       notFound()
@@ -83,69 +91,16 @@ async function SupportTicketDetailsContent({ ticketId }: { ticketId: string }) {
             </Card>
 
             {/* Session Context */}
-            {contextData && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Code className="h-4 w-4" />
-                    Session Context
-                  </CardTitle>
-                  <CardDescription>
-                    Technical details captured when the ticket was created
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-muted rounded-lg p-4">
-                    <pre className="text-xs text-muted-foreground overflow-x-auto">
-                      {JSON.stringify(contextData, null, 2)}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            <ContextDataViewer contextData={ticket.contextData} />
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Status Management */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Status</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <form action={updateSupportTicketStatusAction}>
-                  <input type="hidden" name="id" value={ticket.id} />
-                  <Select name="status" defaultValue={ticket.status}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="open">
-                        <div className="flex items-center gap-2">
-                          <AlertCircle className="h-3 w-3" />
-                          Open
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="in_progress">
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-3 w-3" />
-                          In Progress
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="closed">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-3 w-3" />
-                          Closed
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button type="submit" className="w-full mt-2">
-                    Update Status
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
+            <StatusUpdateForm
+              ticketId={ticket.id}
+              currentStatus={ticket.status as 'open' | 'in_progress' | 'closed'}
+            />
 
             {/* Ticket Details */}
             <Card>
