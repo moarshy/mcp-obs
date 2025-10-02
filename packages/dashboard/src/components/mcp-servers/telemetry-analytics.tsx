@@ -62,12 +62,26 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
   const loadTelemetryData = async () => {
     setLoading(true)
     try {
-      // TODO: Implement getTelemetryAnalyticsAction to fetch real data
-      // const data = await getTelemetryAnalyticsAction({ serverId, timeRange })
-      // setTelemetryData(data)
+      // Import the action dynamically
+      const { getTelemetryAnalyticsAction } = await import('@/lib/orpc/actions/telemetry-ingestion')
 
-      // For now, set to null to show empty state
-      setTelemetryData(null)
+      // Fetch real data from the database
+      const data = await getTelemetryAnalyticsAction({
+        mcpServerId: serverId,
+        timeRange
+      })
+
+      // Handle oRPC response format
+      let analyticsData = data
+      if (Array.isArray(data) && data.length >= 2 && data[0] === null && data[1]) {
+        analyticsData = data[1]
+      }
+
+      if (analyticsData) {
+        setTelemetryData(analyticsData)
+      } else {
+        setTelemetryData(null)
+      }
     } catch (error) {
       console.error('Failed to load telemetry data:', error)
       setTelemetryData(null)
@@ -248,13 +262,12 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Tool Calls</p>
-                <p className="text-2xl font-bold">{telemetryData.summary.totalCalls.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{telemetryData?.summary?.totalCalls?.toLocaleString() || '0'}</p>
               </div>
               <Activity className="h-8 w-8 text-blue-500" />
             </div>
-            <div className="mt-2 flex items-center text-xs text-green-600">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +12% from last period
+            <div className="mt-2 flex items-center text-xs text-muted-foreground">
+              <span>tool executions</span>
             </div>
           </CardContent>
         </Card>
@@ -264,13 +277,12 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Latency</p>
-                <p className="text-2xl font-bold">{telemetryData.summary.avgLatency}ms</p>
+                <p className="text-2xl font-bold">{telemetryData?.summary?.avgLatency || 0}ms</p>
               </div>
               <Timer className="h-8 w-8 text-orange-500" />
             </div>
-            <div className="mt-2 flex items-center text-xs text-green-600">
-              <TrendingDown className="h-3 w-3 mr-1" />
-              -8ms from last period
+            <div className="mt-2 flex items-center text-xs text-muted-foreground">
+              <span>average response time</span>
             </div>
           </CardContent>
         </Card>
@@ -280,13 +292,12 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Error Rate</p>
-                <p className="text-2xl font-bold">{telemetryData.summary.errorRate}%</p>
+                <p className="text-2xl font-bold">{telemetryData?.summary?.errorRate || 0}%</p>
               </div>
               <AlertCircle className="h-8 w-8 text-red-500" />
             </div>
-            <div className="mt-2 flex items-center text-xs text-red-600">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +0.3% from last period
+            <div className="mt-2 flex items-center text-xs text-muted-foreground">
+              <span>error percentage</span>
             </div>
           </CardContent>
         </Card>
@@ -296,13 +307,12 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Active Users</p>
-                <p className="text-2xl font-bold">{telemetryData.summary.activeUsers}</p>
+                <p className="text-2xl font-bold">{telemetryData?.summary?.activeUsers || 0}</p>
               </div>
               <Users className="h-8 w-8 text-green-500" />
             </div>
-            <div className="mt-2 flex items-center text-xs text-green-600">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +5 from last period
+            <div className="mt-2 flex items-center text-xs text-muted-foreground">
+              <span>unique users</span>
             </div>
           </CardContent>
         </Card>
@@ -320,7 +330,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {telemetryData.topTools.map((tool, index) => (
+              {(telemetryData?.topTools || []).map((tool, index) => (
                 <div key={tool.name} className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2">
@@ -338,7 +348,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
                   <div className="w-full bg-muted h-2 rounded overflow-hidden">
                     <div
                       className="h-full bg-blue-500 transition-all"
-                      style={{ width: `${(tool.calls / telemetryData.topTools[0].calls) * 100}%` }}
+                      style={{ width: `${(tool.calls / (telemetryData?.topTools?.[0]?.calls || 1)) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -364,7 +374,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
                   <div className="w-32 bg-muted h-2 rounded overflow-hidden">
                     <div className="h-full bg-green-500 w-[30%]" />
                   </div>
-                  <span className="text-sm font-medium">{telemetryData.latencyPercentiles.p50}ms</span>
+                  <span className="text-sm font-medium">{telemetryData?.latencyPercentiles?.p50 || 0}ms</span>
                 </div>
               </div>
 
@@ -374,7 +384,7 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
                   <div className="w-32 bg-muted h-2 rounded overflow-hidden">
                     <div className="h-full bg-yellow-500 w-[70%]" />
                   </div>
-                  <span className="text-sm font-medium">{telemetryData.latencyPercentiles.p95}ms</span>
+                  <span className="text-sm font-medium">{telemetryData?.latencyPercentiles?.p95 || 0}ms</span>
                 </div>
               </div>
 
@@ -384,48 +394,13 @@ export function TelemetryAnalytics({ serverId, serverSlug, telemetryEnabled }: T
                   <div className="w-32 bg-muted h-2 rounded overflow-hidden">
                     <div className="h-full bg-red-500 w-[90%]" />
                   </div>
-                  <span className="text-sm font-medium">{telemetryData.latencyPercentiles.p99}ms</span>
+                  <span className="text-sm font-medium">{telemetryData?.latencyPercentiles?.p99 || 0}ms</span>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* API Key Management */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                Telemetry API Keys
-              </CardTitle>
-              <CardDescription>Manage API keys for telemetry data export</CardDescription>
-            </div>
-            <Button variant="outline" size="sm">
-              Generate New Key
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div>
-                <div className="flex items-center gap-2">
-                  <code className="text-sm bg-muted px-2 py-1 rounded">mcpobs_live_•••••••••••••••</code>
-                  <Badge variant="outline" className="text-green-600">Active</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">Default Telemetry API Key • Last used 2 hours ago</p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">Regenerate</Button>
-                <Button variant="outline" size="sm">Revoke</Button>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

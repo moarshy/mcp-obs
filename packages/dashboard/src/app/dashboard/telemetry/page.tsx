@@ -10,7 +10,7 @@ import {
   Users,
   TrendingUp
 } from 'lucide-react'
-import { TelemetryAnalytics } from '@/components/mcp-servers/telemetry-analytics'
+import { OrganizationTelemetryView } from '@/components/telemetry/organization-telemetry-view'
 
 export const metadata = {
   title: 'Telemetry | mcp-obs',
@@ -109,123 +109,9 @@ async function TelemetryPageContent() {
               </div>
             </CardContent>
           </Card>
-        ) : servers.length === 1 ? (
-          // Single server - show its analytics directly
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Server className="h-5 w-5" />
-                  {servers[0].name}
-                </CardTitle>
-                <CardDescription>
-                  Telemetry analytics for {servers[0].slug}
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <TelemetryAnalytics
-              serverId={servers[0].id}
-              serverSlug={servers[0].slug}
-              telemetryEnabled={true}
-            />
-          </div>
         ) : (
-          // Multiple servers - show server selector and analytics
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Server Selection</CardTitle>
-                <CardDescription>
-                  Choose an MCP server to view its telemetry analytics
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid gap-4">
-                    {servers.map((server) => (
-                      <div key={server.id} className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-medium">{server.name}</h4>
-                            <p className="text-sm text-muted-foreground">{server.slug}</p>
-                          </div>
-                          <Button asChild variant="outline">
-                            <a href={`/dashboard/telemetry/${server.id}`}>
-                              View Analytics
-                            </a>
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Overview metrics across all servers */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Active Servers</p>
-                      <p className="text-2xl font-bold">{servers.filter(s => s.enabled).length}</p>
-                    </div>
-                    <Server className="h-8 w-8 text-blue-500" />
-                  </div>
-                  <div className="mt-2 flex items-center text-xs text-muted-foreground">
-                    <span>of {servers.length} total</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Total API Calls</p>
-                      <p className="text-2xl font-bold">-</p>
-                    </div>
-                    <Activity className="h-8 w-8 text-green-500" />
-                  </div>
-                  <div className="mt-2 flex items-center text-xs text-muted-foreground">
-                    <span>across all servers</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Avg Response Time</p>
-                      <p className="text-2xl font-bold">-</p>
-                    </div>
-                    <Clock className="h-8 w-8 text-orange-500" />
-                  </div>
-                  <div className="mt-2 flex items-center text-xs text-muted-foreground">
-                    <span>ms average</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Active Users</p>
-                      <p className="text-2xl font-bold">-</p>
-                    </div>
-                    <Users className="h-8 w-8 text-purple-500" />
-                  </div>
-                  <div className="mt-2 flex items-center text-xs text-muted-foreground">
-                    <span>unique users</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+          // Always show organization overview with server selection
+          <OrganizationTelemetryView servers={servers} />
         )}
       </div>
     )

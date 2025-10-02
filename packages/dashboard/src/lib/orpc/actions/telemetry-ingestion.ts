@@ -261,25 +261,344 @@ const getAnalyticsSchema = z.object({
 export const getTelemetryAnalyticsAction = base
   .input(getAnalyticsSchema)
   .handler(async ({ input, errors }) => {
-    // This will be implemented in Phase 4 for the dashboard
-    // For now, return placeholder data structure
+    try {
+      // Calculate time window for queries
+      const now = new Date()
+      let startTime: Date
 
-    return {
-      mcpServerId: input.mcpServerId,
-      timeRange: input.timeRange,
-      summary: {
-        totalCalls: 0,
-        avgLatency: 0,
-        errorRate: 0,
-        activeUsers: 0,
-      },
-      topTools: [],
-      latencyPercentiles: {
-        p50: 0,
-        p95: 0,
-        p99: 0,
-      },
-      timeSeries: [],
+      switch (input.timeRange) {
+        case '1h':
+          startTime = new Date(now.getTime() - 60 * 60 * 1000)
+          break
+        case '6h':
+          startTime = new Date(now.getTime() - 6 * 60 * 60 * 1000)
+          break
+        case '24h':
+          startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          break
+        case '7d':
+          startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          break
+        case '30d':
+          startTime = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+          break
+        default:
+          startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+      }
+
+      const { gte, count, desc, sql, avg, countDistinct, eq, and } = await import('drizzle-orm')
+
+      // Base filter conditions
+      const baseConditions = [
+        eq(telemetryTrace.mcpServerId, input.mcpServerId),
+        gte(telemetryTrace.createdAt, startTime),
+        eq(telemetryTrace.mcpOperationType, 'tool_call')
+      ]
+
+      // 1. Summary metrics
+      const [summaryResult] = await db
+        .select({
+          totalCalls: count().as('totalCalls'),
+          avgLatency: avg(telemetryTrace.durationNs).as('avgLatency'),
+          activeUsers: countDistinct(telemetryTrace.mcpUserId).as('activeUsers'),
+        })
+        .from(telemetryTrace)
+        .where(and(...baseConditions))
+
+      // 2. Error rate calculation
+      const [errorResult] = await db
+        .select({
+          totalCalls: count().as('totalCalls'),
+          errorCalls: count(sql`CASE WHEN ${telemetryTrace.spanStatus} = 'ERROR' THEN 1 END`).as('errorCalls'),
+        })
+        .from(telemetryTrace)
+        .where(and(...baseConditions))
+
+      // 3. Top tools by usage
+      const topToolsResult = await db
+        .select({
+          name: telemetryTrace.mcpToolName,
+          calls: count().as('calls'),
+          avgLatency: avg(telemetryTrace.durationNs).as('avgLatency'),
+          errorRate: sql<number>`(COUNT(CASE WHEN ${telemetryTrace.spanStatus} = 'ERROR' THEN 1 END)::float / COUNT(*)::float * 100)`.as('errorRate'),
+        })
+        .from(telemetryTrace)
+        .where(and(...baseConditions))
+        .groupBy(telemetryTrace.mcpToolName)
+        .orderBy(desc(count()))
+        .limit(10)
+
+      // 4. Latency percentiles calculation
+      const latencyValues = await db
+        .select({
+          durationMs: sql<number>`(${telemetryTrace.durationNs} / 1000000.0)`.as('durationMs')
+        })
+        .from(telemetryTrace)
+        .where(and(...baseConditions))
+        .orderBy(telemetryTrace.durationNs)
+
+      // Calculate percentiles
+      const calculatePercentile = (values: number[], percentile: number) => {
+        if (values.length === 0) return 0
+        const index = Math.ceil((percentile / 100) * values.length) - 1
+        return Math.round(values[Math.max(0, index)] || 0)
+      }
+
+      const durations = latencyValues.map(v => v.durationMs)
+      const latencyPercentiles = {
+        p50: calculatePercentile(durations, 50),
+        p95: calculatePercentile(durations, 95),
+        p99: calculatePercentile(durations, 99),
+      }
+
+      // 5. Time series data (simplified - hourly buckets for now)
+      const timeBucket = input.timeRange === '1h' || input.timeRange === '6h'
+        ? "date_trunc('minute', created_at)"
+        : input.timeRange === '24h'
+        ? "date_trunc('hour', created_at)"
+        : "date_trunc('day', created_at)"
+
+      const timeSeriesResult = await db
+        .select({
+          timestamp: sql<string>`${sql.raw(timeBucket)}::text`.as('timestamp'),
+          calls: count().as('calls'),
+          avgLatency: avg(telemetryTrace.durationNs).as('avgLatency'),
+          errors: count(sql`CASE WHEN ${telemetryTrace.spanStatus} = 'ERROR' THEN 1 END`).as('errors'),
+        })
+        .from(telemetryTrace)
+        .where(and(...baseConditions))
+        .groupBy(sql.raw(timeBucket))
+        .orderBy(sql.raw(timeBucket))
+        .limit(100)
+
+      // Process results
+      const totalCalls = Number(summaryResult?.totalCalls || 0)
+      const avgLatencyNs = Number(summaryResult?.avgLatency || 0)
+      const avgLatency = Math.round(avgLatencyNs / 1_000_000) // Convert nanoseconds to milliseconds
+      const activeUsers = Number(summaryResult?.activeUsers || 0)
+
+      const totalCallsForError = Number(errorResult?.totalCalls || 0)
+      const errorCalls = Number(errorResult?.errorCalls || 0)
+      const errorRate = totalCallsForError > 0 ? Math.round((errorCalls / totalCallsForError) * 100 * 10) / 10 : 0
+
+      const topTools = topToolsResult
+        .filter(tool => tool.name) // Filter out null tool names
+        .map(tool => ({
+          name: tool.name!,
+          calls: Number(tool.calls),
+          avgLatency: Math.round(Number(tool.avgLatency || 0) / 1_000_000),
+          errorRate: Math.round((Number(tool.errorRate) || 0) * 10) / 10,
+        }))
+
+      const timeSeries = timeSeriesResult.map(ts => ({
+        timestamp: ts.timestamp,
+        calls: Number(ts.calls),
+        latency: Math.round(Number(ts.avgLatency || 0) / 1_000_000),
+        errors: Number(ts.errors),
+      }))
+
+      return {
+        mcpServerId: input.mcpServerId,
+        timeRange: input.timeRange,
+        summary: {
+          totalCalls,
+          avgLatency,
+          errorRate,
+          activeUsers,
+        },
+        topTools,
+        latencyPercentiles,
+        timeSeries,
+      }
+    } catch (error) {
+      console.error('Error fetching telemetry analytics:', error)
+      throw errors.INTERNAL_SERVER_ERROR({
+        message: 'Failed to fetch telemetry analytics data'
+      })
+    }
+  })
+  .actionable({})
+
+// Organization-level analytics (cross-server)
+const getOrganizationAnalyticsSchema = z.object({
+  timeRange: z.enum(['1h', '6h', '24h', '7d', '30d']).default('24h'),
+})
+
+export const getOrganizationTelemetryAction = base
+  .input(getOrganizationAnalyticsSchema)
+  .handler(async ({ input, errors }) => {
+    try {
+      // Import all dependencies first
+      const { requireSession } = await import('../../auth/session')
+      const { member, mcpServer } = await import('database')
+      const { gte, count, desc, sql, avg, countDistinct, eq, and } = await import('drizzle-orm')
+
+      // Get user's organization from session
+      const session = await requireSession()
+
+      if (!session?.user) {
+        throw errors.UNAUTHORIZED({ message: 'Authentication required' })
+      }
+
+      // Get user's organization
+      const userMemberships = await db
+        .select({ organizationId: member.organizationId })
+        .from(member)
+        .where(eq(member.userId, session.user.id))
+
+      if (userMemberships.length === 0) {
+        throw errors.UNAUTHORIZED({ message: 'No organization membership found' })
+      }
+
+      const organizationId = userMemberships[0].organizationId
+
+
+      // Calculate time window for queries
+      const now = new Date()
+      let startTime: Date
+
+      switch (input.timeRange) {
+        case '1h':
+          startTime = new Date(now.getTime() - 60 * 60 * 1000)
+          break
+        case '6h':
+          startTime = new Date(now.getTime() - 6 * 60 * 60 * 1000)
+          break
+        case '24h':
+          startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+          break
+        case '7d':
+          startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          break
+        case '30d':
+          startTime = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+          break
+        default:
+          startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+      }
+
+
+      // Base filter conditions for organization
+      const baseConditions = [
+        eq(telemetryTrace.organizationId, organizationId),
+        gte(telemetryTrace.createdAt, startTime),
+        eq(telemetryTrace.mcpOperationType, 'tool_call')
+      ]
+
+      // 1. Organization-wide summary metrics
+      const [summaryResult] = await db
+        .select({
+          totalCalls: count().as('totalCalls'),
+          avgLatency: avg(telemetryTrace.durationNs).as('avgLatency'),
+          activeUsers: countDistinct(telemetryTrace.mcpUserId).as('activeUsers'),
+          activeServers: countDistinct(telemetryTrace.mcpServerId).as('activeServers'),
+        })
+        .from(telemetryTrace)
+        .where(and(...baseConditions))
+
+      // 2. Error rate calculation
+      const [errorResult] = await db
+        .select({
+          totalCalls: count().as('totalCalls'),
+          errorCalls: count(sql`CASE WHEN ${telemetryTrace.spanStatus} = 'ERROR' THEN 1 END`).as('errorCalls'),
+        })
+        .from(telemetryTrace)
+        .where(and(...baseConditions))
+
+      // 3. Most used server
+      const topServersResult = await db
+        .select({
+          serverId: telemetryTrace.mcpServerId,
+          serverName: mcpServer.name,
+          serverSlug: mcpServer.slug,
+          calls: count().as('calls'),
+          avgLatency: avg(telemetryTrace.durationNs).as('avgLatency'),
+          errorRate: sql<number>`(COUNT(CASE WHEN ${telemetryTrace.spanStatus} = 'ERROR' THEN 1 END)::float / COUNT(*)::float * 100)`.as('errorRate'),
+        })
+        .from(telemetryTrace)
+        .innerJoin(mcpServer, eq(telemetryTrace.mcpServerId, mcpServer.id))
+        .where(and(...baseConditions))
+        .groupBy(telemetryTrace.mcpServerId, mcpServer.name, mcpServer.slug)
+        .orderBy(desc(count()))
+        .limit(5)
+
+      // 4. Most called tool (with server context)
+      const topToolsResult = await db
+        .select({
+          toolName: telemetryTrace.mcpToolName,
+          serverId: telemetryTrace.mcpServerId,
+          serverName: mcpServer.name,
+          serverSlug: mcpServer.slug,
+          calls: count().as('calls'),
+          avgLatency: avg(telemetryTrace.durationNs).as('avgLatency'),
+          errorRate: sql<number>`(COUNT(CASE WHEN ${telemetryTrace.spanStatus} = 'ERROR' THEN 1 END)::float / COUNT(*)::float * 100)`.as('errorRate'),
+        })
+        .from(telemetryTrace)
+        .innerJoin(mcpServer, eq(telemetryTrace.mcpServerId, mcpServer.id))
+        .where(and(...baseConditions))
+        .groupBy(telemetryTrace.mcpToolName, telemetryTrace.mcpServerId, mcpServer.name, mcpServer.slug)
+        .orderBy(desc(count()))
+        .limit(10)
+
+
+      // Process results
+      const totalCalls = Number(summaryResult?.totalCalls || 0)
+      const avgLatencyNs = Number(summaryResult?.avgLatency || 0)
+      const avgLatency = Math.round(avgLatencyNs / 1_000_000) // Convert nanoseconds to milliseconds
+      const activeUsers = Number(summaryResult?.activeUsers || 0)
+      const activeServers = Number(summaryResult?.activeServers || 0)
+
+      const totalCallsForError = Number(errorResult?.totalCalls || 0)
+      const errorCalls = Number(errorResult?.errorCalls || 0)
+      const errorRate = totalCallsForError > 0 ? Math.round((errorCalls / totalCallsForError) * 100 * 10) / 10 : 0
+
+      const topServers = topServersResult.map(server => ({
+        serverId: server.serverId,
+        serverName: server.serverName,
+        serverSlug: server.serverSlug,
+        calls: Number(server.calls),
+        avgLatency: Math.round(Number(server.avgLatency || 0) / 1_000_000),
+        errorRate: Math.round((Number(server.errorRate) || 0) * 10) / 10,
+      }))
+
+      const topTools = topToolsResult
+        .filter(tool => tool.toolName) // Filter out null tool names
+        .map(tool => ({
+          toolName: tool.toolName!,
+          serverId: tool.serverId,
+          serverName: tool.serverName,
+          serverSlug: tool.serverSlug,
+          calls: Number(tool.calls),
+          avgLatency: Math.round(Number(tool.avgLatency || 0) / 1_000_000),
+          errorRate: Math.round((Number(tool.errorRate) || 0) * 10) / 10,
+        }))
+
+      return {
+        organizationId,
+        timeRange: input.timeRange,
+        summary: {
+          totalCalls,
+          avgLatency,
+          errorRate,
+          activeUsers,
+          activeServers,
+        },
+        topServers,
+        topTools,
+        mostUsedServer: topServers[0] || null,
+        mostCalledTool: topTools[0] || null,
+      }
+    } catch (error) {
+      console.error('Error fetching organization telemetry analytics:', error)
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        organizationId,
+        timeRange: input.timeRange
+      })
+      throw errors.INTERNAL_SERVER_ERROR({
+        message: `Failed to fetch organization telemetry analytics data: ${error.message}`
+      })
     }
   })
   .actionable({})

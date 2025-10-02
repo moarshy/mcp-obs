@@ -4,10 +4,8 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { requireSession } from '../../auth/session'
 import { base } from '../router'
-import { db, mcpServer, organization, member, mcpServerApiKey } from 'database'
+import { db, mcpServer, organization, member } from 'database'
 import { eq, and } from 'drizzle-orm'
-import { randomBytes } from 'crypto'
-import bcrypt from 'bcryptjs'
 
 const createMcpServerSchema = z.object({
   name: z.string().min(1).max(100),
@@ -34,11 +32,6 @@ const validateSlugSchema = z.object({
   slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, 'Slug must contain only lowercase letters, numbers, and hyphens'),
 })
 
-// Helper function to generate API key with format: mcpobs_{env}_{random}
-function generateApiKeyString(env: string = 'live'): string {
-  const randomPart = randomBytes(16).toString('hex')
-  return `mcpobs_${env}_${randomPart}`
-}
 
 export const createMcpServerAction = base
   .input(createMcpServerSchema)
@@ -117,37 +110,11 @@ export const createMcpServerAction = base
       }).returning()
 
       const createdServer = result[0]
-      let apiKey: string | undefined
-
-      // 4. Generate API key if telemetry is enabled
-      if (input.telemetryEnabled) {
-        try {
-          const plainApiKey = generateApiKeyString()
-          const saltRounds = 12
-          const apiKeyHash = await bcrypt.hash(plainApiKey, saltRounds)
-
-          await db.insert(mcpServerApiKey).values({
-            mcpServerId: createdServer.id,
-            organizationId: organizationId,
-            apiKeyHash: apiKeyHash,
-            name: 'Default Telemetry API Key',
-          })
-
-          apiKey = plainApiKey // Include in response (show once only)
-        } catch (error) {
-          console.warn('Failed to generate API key for telemetry:', error)
-          // Continue without failing the server creation
-        }
-      }
 
       // 5. Cache revalidation (CRITICAL)
       revalidatePath('/dashboard/mcp-servers')
 
-      return {
-        ...createdServer,
-        // Include API key in response if generated (shown once only)
-        ...(apiKey && { telemetryApiKey: apiKey }),
-      }
+      return createdServer
     } catch (error) {
       console.error('Error creating MCP server:', error)
 
